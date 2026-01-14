@@ -2,10 +2,11 @@
 
 1. Team info:
    Owen Koster,
+   Peyton DuPont
    
    The main method of communication is Discord
    
-2. Product description:
+3. Product description:
 Abstract:
 
 Goal:
