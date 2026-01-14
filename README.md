@@ -1,11 +1,11 @@
 # Group16
 
-1. Team info
+1. Team info:
    Owen Koster,
    
    The main method of communication is Discord
    
-2. Product description
+2. Product description:
 Abstract:
 
 Goal:
