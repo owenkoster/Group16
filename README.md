@@ -10,6 +10,7 @@
 Abstract:
 
 Goal:
+Develop software that connects to the users vehicle to receive live updates and diagnostic codes.
 
 Current practices:
 
