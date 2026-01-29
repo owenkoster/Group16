@@ -21,7 +21,7 @@ if c.is_connected():
     #command = obd.commands.CLEAR_DTC 
     #response = c.query(command)
 
-    c.watch(obd.commands.GET_DTC);
+    c.watch(obd.commands.GET_DTC)
     c.watch(obd.commands.SHORT_FUEL_TRIM_1)
     c.watch(obd.commands.SHORT_FUEL_TRIM_2)
     c.watch(obd.commands.RPM)
