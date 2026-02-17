@@ -1,58 +1,77 @@
-import obd
+﻿import obd
 import time
-import os
 
-# Specify the port the emulator is connected to (e.g., COM5 on Windows)
-# For Linux/macOS, it might be a path like '/dev/ttyUSB0' or similar
-c = obd.Async("COM6", baudrate=38400) #2 for emulator.
-#still need to figure out automatic port sensing
+#filters the commands array to ignore any command not in the filtered categorys
+def FilterCommands(commands, filters):
 
-# Wait for the connection to establish
-time.sleep(3) 
+    filteredCommands = {}
 
-if c.is_connected():
-    print("Connected to the ELM327 emulator!")
+    for name, data in commands.items():
+        if (data['category'] in filters):
+            filteredCommands[name] = data
+    return filteredCommands
+
+#Turns the set returned by pythonOBD into a dictionary of commands
+def CommandsToDictionary(availableCommands):
     
-    commandsAvailable = c.supported_commands
-    print("Supported:", commandsAvailable)
-    print("\n\n")
-    #for ii in range(0, 20):
-    #    print(commandsAvailable[ii])
-    #command = obd.commands.CLEAR_DTC 
-    #response = c.query(command)
-
-    c.watch(obd.commands.GET_DTC)
-    c.watch(obd.commands.SHORT_FUEL_TRIM_1)
-    c.watch(obd.commands.SHORT_FUEL_TRIM_2)
-    c.watch(obd.commands.RPM)
-    c.watch(obd.commands.SPEED)
-    c.watch(obd.commands.COOLANT_TEMP)
-    c.start() # start the async update loop
-    while(True):
-        print(c.query(obd.commands.GET_DTC))
-        print(c.query(obd.commands.RPM))
-        print(c.query(obd.commands.SPEED))
-        print(c.query(obd.commands.COOLANT_TEMP))
-        print(c.query(obd.commands.SHORT_FUEL_TRIM_1))
-        print(c.query(obd.commands.SHORT_FUEL_TRIM_2))
-        time.sleep(.8)
-
-    # Query for Engine RPM (example command)
-    #command = obd.commands.RPM 
-    #response = connection.query(command) #
-    #print(f"Engine RPM: {response.value}") # response.value provides the parsed data
+    #Dictionary of available commands
+    commands = {}
     
-    # You can query other data points as well, e.g., Vehicle Speed (SPEED)
-    #command_speed = obd.commands.SPEED
-    #response_speed = connection.query(command_speed)
-    #print(f"Vehicle Speed: {response_speed.value}")
-    
-    #command_coolantTemp = obd.commands.COOLANT_TEMP
-    #response_coolantTemp = connection.query(command_coolantTemp)
-    #print(f"Vehicle Speed: {response_coolantTemp.value}")
+    #Loop through each available command
+    for cmd in availableCommands:
 
+        #Classify each command based on classification definitions
+        if cmd.name in BLOCKED:
+            category = "blocked"
+        elif cmd.name in INTERNAL_ONLY:
+            category = "internal"
+        elif str(cmd.name).startswith(SYSTEM_PREFIXES):
+            category = "on_demand"
+        elif cmd.name in DISCOVERY:
+            category = "on_demand"
+        elif cmd.name in LOW_FREQ:
+            category = "on_demand"
+        else:
+            category = "telemetry"
 
-    # Close the connection
-    c.close()
-else:
-    print("Failed to connect to the emulator.")
+        #Build the dictionary entry
+        commands[cmd.name] = {
+            "name": cmd.name,
+            "command": cmd,
+            "description": cmd.desc,
+            "category": category,
+            "prevValue": None, 
+            "lastUpdate": None
+        }
+    #Return the dictionary of commands
+    return commands
+
+#Prefix for DTC_ command. Should be normally ignored
+SYSTEM_PREFIXES = ("DTC_",)
+
+#Blocked commands that will never be run
+BLOCKED = {
+    "CLEAR_DTC",
+}
+
+# Commands for this scripts use only user should not use
+INTERNAL_ONLY = {"GET_DTC", "GET_CURRENT_DTC"}
+
+# Should only be run on command not constantly
+DISCOVERY = {
+    "PIDS_A", "PIDS_B", "PIDS_C", "PIDS_9A",
+    "DTC_PIDS_B", "DTC_PIDS_C",
+    "MIDS_A",
+    "ELM_VERSION",
+    "OBD_COMPLIANCE",
+    "DTC_OBD_COMPLIANCE",
+}
+
+#Commands that are rarely run
+LOW_FREQ = {
+    "FUEL_TYPE",
+    "FUEL_STATUS",
+    "O2_SENSORS",
+    "STATUS",
+}
+
