@@ -3,19 +3,34 @@ import time
 import serial
 from multiprocessing import Process, Queue
 import sys
+from functools import partial
+import threading
+from threading import Lock
 
 PROGRAM_ALIVE = True
 WORKER_ALIVE = True
 
 INITIAL_RESTART_DELAY = 2
 MAX_RESTART_DELAY = 8
-STALL_TIMEOUT = 8
+STALL_TIMEOUT = 15
+NULL_RESPONSE_TIMEOUT = 8
+
+def CacheCallback(response, OBDCACHE, lock):
+    if response.is_null():
+        return
+    with lock:
+        OBDCACHE[response.command.name]["prevValue"] = OBDCACHE[response.command.name]["value"]
+        OBDCACHE[response.command.name]["lastUpdate"] = time.time()
+        OBDCACHE[response.command.name]["value"] = str(response.value)
+
 
 # ==============================
 # Worker Process
 # ==============================
 def OBDWorker(queue):
     global WORKER_ALIVE
+    OBDCACHE = {}
+    cache_lock = Lock()
     try:
         baud = 38400
         ports = obd.scan_serial()
@@ -24,10 +39,9 @@ def OBDWorker(queue):
             queue.put(("error", "no_ports"))
             return
 
-        connection = obd.OBD(
+        connection = obd.Async(
             portstr=ports[0],
             baudrate=baud,
-            timeout=0.5,
             fast=False
         )
 
@@ -40,27 +54,40 @@ def OBDWorker(queue):
             CommandsToDictionary(availableCommands),
             "telemetry"
         )
-        #placeholder for live cache
-        rpm_cmd = commands["RPM"]["command"]
+        #print(commands)
+
+        #Rolling cache
+        for cmd, data in commands.items():
+            OBDCACHE[cmd] = {
+                "value": None,
+                "command": data["command"],
+                "prevValue": None, 
+                "lastUpdate": None
+            }
+
+        for cmd, data in commands.items():
+            callback_with_cache = partial(CacheCallback, OBDCACHE=OBDCACHE, lock=cache_lock)
+            connection.watch(data["command"], callback=callback_with_cache)
+        connection.start()
 
         while WORKER_ALIVE:
-            response = connection.query(rpm_cmd)
+            time.sleep(.5)
+            changed = {}
+            with cache_lock:
+                for cmd, data in OBDCACHE.items():
+                    if data["value"] != data["prevValue"]:
+                        changed[cmd] = data["value"]
 
-            if response.is_null():
-                queue.put(("error", "null_response"))
-                break
-
-            rpm = response.value
-            queue.put(("data", rpm))
-
-            time.sleep(1)
-        # End placeholder
+            if changed:
+                queue.put(("data", changed))
 
     except Exception as e:
         queue.put(("error", str(e)))
 
     finally:
         try:
+            connection.stop()
+            connection.unwatch_all()
             connection.close() #close connection
         except:
             pass
@@ -99,16 +126,17 @@ def Main():
 
         # Process worker messages
         while not queue.empty():
-            msg_type, data = queue.get()
+            msg, data = queue.get()
 
-            if msg_type == "data":
+            if msg == "data":
                 print("Supervisor: Connection Healthy")
-                print("Response", data)
+                print("------------------------------")
+                print(data)
                 last_heartbeat = time.time()
                 restart_delay = INITIAL_RESTART_DELAY
 
-            elif msg_type == "error":
-                print("Worker error:", data)
+            elif msg == "error":
+                print("Worker error")
                 worker.terminate()
                 worker.join()
 
