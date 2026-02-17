@@ -35,9 +35,9 @@ def OBDWorker(queue):
             queue.put(("error", "not_connected"))
             return
 
-        commands_available = connection.supported_commands
+        availableCommands = connection.supported_commands
         commands = FilterCommands(
-            CommandsToDictionary(commands_available),
+            CommandsToDictionary(availableCommands),
             "telemetry"
         )
         #placeholder for live cache
@@ -50,7 +50,7 @@ def OBDWorker(queue):
                 queue.put(("error", "null_response"))
                 break
 
-            rpm = float(response.value.magnitude)
+            rpm = response.value
             queue.put(("data", rpm))
 
             time.sleep(1)
@@ -223,3 +223,8 @@ LOW_FREQ = {
     "STATUS",
 }
 
+#Call main program
+if __name__ == "__main__":
+    from multiprocessing import freeze_support
+    freeze_support()   # Optional unless freezing, but safe
+    Main()
