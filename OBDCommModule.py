@@ -6,6 +6,8 @@ import sys
 from functools import partial
 import threading
 from threading import Lock
+import zmq
+import json
 
 PROGRAM_ALIVE = True
 WORKER_ALIVE = True
@@ -134,6 +136,9 @@ def Main():
     CURRENT_CACHE = {}
     PREV_CACHE = {}
 
+    # Initialize ZeroMQ
+    zmq_publisher = InitializeZMQ()
+
     try:
         while PROGRAM_ALIVE:
             time.sleep(1)
@@ -189,6 +194,10 @@ def Main():
                 restartTime = None
 
             #PUT COMMUNICATION STUFF HERE
+
+            #Use ZeroMQ function to publish data
+            PublishVehicleData(zmq_publisher, CURRENT_CACHE)
+
             for cmd, data in CURRENT_CACHE.items(): #REPLACE ME
                 print(str(data["command"].name) + " : " + data["value"] + " : " + str(data["lastUpdate"])) #REPLACE ME
     
@@ -196,6 +205,9 @@ def Main():
         print("\nShutting down cleanly...")
 
     finally:
+        # Cleanup ZeroMQ
+        CleanupZMQ(zmq_publisher)
+
         worker.terminate()
         worker.join()
         print("Supervisor exited.")
@@ -276,6 +288,96 @@ LOW_FREQ = {
 
 #ZMQ stuff
 
+def InitializeZMQ(port=5555):
+
+    """
+    Initialize ZeroMQ publisher socket.
+
+    Args:
+        port: Port number to bind to (default: 5555)
+
+    Returns:
+        Dictionary containing context and publisher socket
+    """
+
+    try:
+        context = zmq.Context()
+        publisher = context.socket(zmq.PUB)
+        publisher.bind(f"tcp://*:{port}")
+        print(f"ZeroMQ Publisher initialized on port {port}")
+
+        return {
+            "context": context,
+            "publisher": publisher,
+            "enabled": True
+        }
+
+    except Exception as e:
+        print(f"Failed to initialize ZeroMQ: {e}")
+        return {
+            "context": None,
+            "publisher": None,
+            "enabled": False
+        }
+
+def PublishVehicleData(zmq_publisher, cache_data):
+
+    """
+    Publish vehicle data over ZeroMQ.
+
+    Args:
+        zmq_publisher: Dictionary containing ZeroMQ publisher info
+        cache_data: Current vehicle data cache (CURRENT_CACHE)
+    """
+
+    if not zmq_publisher or not zmq_publisher.get("enabled"):
+        return
+    
+    try:
+        # Prepare data for transmission
+        vehicle_data = {
+            "timestamp": time.time(),
+            "data": {}
+        }
+
+        # Convert cache data to JSON-serializable format
+        for cmd, data in cache_data.items():
+            vehicle_data["data"][cmd] = {
+                "value": data["value"],
+                "lastUpdate": data["lastUpdate"]
+            }
+
+        # Publish only if there's data
+        if vehicle_data["data"]:
+            message = json.dumps(vehicle_data)
+            zmq_publisher["publisher"].send_string(f"VEHICLE_DATA {message}")
+            #debug:
+            #print(f"Published {len(vehicle_data['data'])} values via ZeroMQ")
+
+    except Exception as e:
+        print(f"Error publishing to ZeroMQ: {e}")
+
+def CleanupZMQ(zmq_publisher):
+    
+    """
+    Cleanup ZeroMQ resources.
+
+    Args:
+        zmq_publisher: Dictionary containing ZeroMQ publisher info
+    """
+
+    if not zmq_publisher or not zmq_publisher.get("enabled"):
+        return
+
+    try:
+        print("Shutting down ZeroMQ...")
+        if zmq_publisher["publisher"]:
+            zmq_publisher["publisher"].close()
+        if zmq_publisher["context"]:
+            zmq_publisher["context"].term()
+        print("ZeroMQ shutdown complete.")
+    except Exception as e:
+        print(f"Error during ZeroMQ cleanup: {e}")
 
 #Call main program
 if __name__ == "__main__":
