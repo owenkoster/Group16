@@ -188,8 +188,9 @@ def Main():
                 last_heartbeat = time.time()
                 restartTime = None
 
-            for cmd, data in CURRENT_CACHE.items():
-                print(str(data["command"].name) + " : " + data["value"] + " : " + str(data["lastUpdate"]))
+            #PUT COMMUNICATION STUFF HERE
+            for cmd, data in CURRENT_CACHE.items(): #REPLACE ME
+                print(str(data["command"].name) + " : " + data["value"] + " : " + str(data["lastUpdate"])) #REPLACE ME
     
     except KeyboardInterrupt:
         print("\nShutting down cleanly...")
