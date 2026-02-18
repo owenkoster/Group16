@@ -12,7 +12,7 @@ WORKER_ALIVE = True
 
 INITIAL_RESTART_DELAY = 2
 MAX_RESTART_DELAY = 8
-STALL_TIMEOUT = 15
+STALL_TIMEOUT = 6
 NULL_RESPONSE_TIMEOUT = 8
 
 def CacheCallback(response, OBDCACHE, lock):
@@ -69,17 +69,22 @@ def OBDWorker(queue):
             callback_with_cache = partial(CacheCallback, OBDCACHE=OBDCACHE, lock=cache_lock)
             connection.watch(data["command"], callback=callback_with_cache)
         connection.start()
-
+        youngestUpdate = 20000000000
         while WORKER_ALIVE:
             time.sleep(.5)
             changed = {}
             with cache_lock:
                 for cmd, data in OBDCACHE.items():
                     if data["value"] != data["prevValue"]:
+                        if(data["lastUpdate"] < youngestUpdate):
+                            youngestUpdate = data["lastUpdate"]
                         changed[cmd] = data["value"]
-
             if changed:
                 queue.put(("data", changed))
+            else:
+                if youngestUpdate >= STALL_TIMEOUT:
+                    queue.put(("error", "TimeOut"))
+            
 
     except Exception as e:
         queue.put(("error", str(e)))
@@ -121,22 +126,44 @@ def Main():
 
     last_heartbeat = time.time()
 
+    CURRENT_CACHE = {}
+    PREV_CACHE = {}
+
     while PROGRAM_ALIVE:
         time.sleep(1)
 
         # Process worker messages
         while not queue.empty():
+
             msg, data = queue.get()
 
             if msg == "data":
                 print("Supervisor: Connection Healthy")
                 print("------------------------------")
                 print(data)
+                PREV_CACHE = CURRENT_CACHE.copy()
+                CURRENT_CACHE.update(data)
+                if(PREV_CACHE == CURRENT_CACHE):
+                    print("Worker stalled. Killing.")
+                    worker.terminate()
+                    worker.join()
+
+                    print(f"Restarting in {restart_delay}s...")
+                    time.sleep(restart_delay)
+
+                    wait_for_port()
+                    worker = StartWorker(queue)
+
+                    restart_delay = min(restart_delay * 2, MAX_RESTART_DELAY)
+                    last_heartbeat = time.time()
+                    continue
+
+
                 last_heartbeat = time.time()
                 restart_delay = INITIAL_RESTART_DELAY
 
             elif msg == "error":
-                print("Worker error")
+                print("Worker error: " + data)
                 worker.terminate()
                 worker.join()
 
@@ -251,8 +278,12 @@ LOW_FREQ = {
     "STATUS",
 }
 
+#ZMQ stuff
+
+
 #Call main program
 if __name__ == "__main__":
     from multiprocessing import freeze_support
     freeze_support()   # Optional unless freezing, but safe
     Main()
+
