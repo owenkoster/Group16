@@ -13,7 +13,7 @@ WORKER_ALIVE = True
 INITIAL_RESTART_DELAY = 2
 MAX_RESTART_DELAY = 8
 STALL_TIMEOUT = 6
-NULL_RESPONSE_TIMEOUT = 8
+NULL_RESPONSE_TIMEOUT = 2
 
 def CacheCallback(response, OBDCACHE, lock):
     if response.is_null():
@@ -69,21 +69,27 @@ def OBDWorker(queue):
             callback_with_cache = partial(CacheCallback, OBDCACHE=OBDCACHE, lock=cache_lock)
             connection.watch(data["command"], callback=callback_with_cache)
         connection.start()
-        youngestUpdate = 20000000000
         while WORKER_ALIVE:
-            time.sleep(.5)
+            time.sleep(1)
             changed = {}
+            most_recent_update = 0
+
             with cache_lock:
                 for cmd, data in OBDCACHE.items():
+                    if data["lastUpdate"]:
+                        if data["lastUpdate"] > most_recent_update:
+                            most_recent_update = data["lastUpdate"]
+
                     if data["value"] != data["prevValue"]:
-                        if(data["lastUpdate"] < youngestUpdate):
-                            youngestUpdate = data["lastUpdate"]
-                        changed[cmd] = data["value"]
+                        changed[cmd] = data
+
             if changed:
                 queue.put(("data", changed, commands))
-            else:
-                if youngestUpdate >= STALL_TIMEOUT:
-                    queue.put(("error", "TimeOut", None))
+                for cmd in changed:
+                    OBDCACHE[cmd]["prevValue"] = OBDCACHE[cmd]["value"]
+
+            if most_recent_update and time.time() - most_recent_update > STALL_TIMEOUT:
+                queue.put(("error", "TimeOut", None))
             
 
     except Exception as e:
@@ -107,7 +113,7 @@ def wait_for_port():
         if ports:
             return
         print("Waiting for emulator...")
-        time.sleep(1)
+        time.sleep(.25)
 
 
 def StartWorker(queue):
@@ -124,84 +130,74 @@ def Main():
     worker = StartWorker(queue)
 
     last_heartbeat = time.time()
-
+    restartTime = None
     CURRENT_CACHE = {}
     PREV_CACHE = {}
 
-    while PROGRAM_ALIVE:
-        time.sleep(1)
+    try:
+        while PROGRAM_ALIVE:
+            time.sleep(1)
 
-        # Process worker messages
-        while not queue.empty():
+            # Process worker messages
+            while not queue.empty():
 
-            msg, data, cmds = queue.get()
+                msg, data, cmds = queue.get()
 
-            if msg == "data":
-                print("Supervisor: Connection Healthy")
-                print("------------------------------")
-                print(data)
-                PREV_CACHE = CURRENT_CACHE.copy()
-                CURRENT_CACHE.update(data)
-                if(PREV_CACHE == CURRENT_CACHE):
-                    print("Worker stalled. Killing.")
+                if msg == "data":
+                    print("Supervisor: Connection Healthy")
+                    print("------------------------------")
+                    PREV_CACHE = CURRENT_CACHE.copy()
+                    CURRENT_CACHE.update(data)
+                    for key, value in CURRENT_CACHE.items():
+                        if(time.time() - value["lastUpdate"] <= NULL_RESPONSE_TIMEOUT):
+                            last_heartbeat = time.time()
+                            restart_delay = INITIAL_RESTART_DELAY
+                            break
+
+
+                elif msg == "error":
+                    print("Worker error: " + data)
+                    restartTime = time.time() + restart_delay
                     worker.terminate()
                     worker.join()
 
                     print(f"Restarting in {restart_delay}s...")
-                    time.sleep(restart_delay)
 
-                    wait_for_port()
-                    worker = StartWorker(queue)
-
-                    restart_delay = min(restart_delay * 2, MAX_RESTART_DELAY)
-                    last_heartbeat = time.time()
-                    continue
-
-
-                last_heartbeat = time.time()
-                restart_delay = INITIAL_RESTART_DELAY
-
-            elif msg == "error":
-                print("Worker error: " + data)
+            # Detect stall (blocked serial read protection)
+            if time.time() - last_heartbeat > STALL_TIMEOUT and restartTime == None:
+                print("Worker stalled. Killing.")
+                restartTime = time.time() + restart_delay
                 worker.terminate()
                 worker.join()
 
                 print(f"Restarting in {restart_delay}s...")
-                time.sleep(restart_delay)
+                #time.sleep(restart_delay)
 
+            # Worker died unexpectedly
+            if not worker.is_alive() and restartTime == None:
+                print("Worker crashed.")
+
+                print(f"Restarting in {restart_delay}s...")
+                restartTime = time.time() + restart_delay
+
+            if(restartTime != None and time.time() >= restartTime):
                 wait_for_port()
                 worker = StartWorker(queue)
 
                 restart_delay = min(restart_delay * 2, MAX_RESTART_DELAY)
                 last_heartbeat = time.time()
+                restartTime = None
 
-        # Detect stall (blocked serial read protection)
-        if time.time() - last_heartbeat > STALL_TIMEOUT:
-            print("Worker stalled. Killing.")
-            worker.terminate()
-            worker.join()
+            for cmd, data in CURRENT_CACHE.items():
+                print(str(data["command"].name) + " : " + data["value"] + " : " + str(data["lastUpdate"]))
+    
+    except KeyboardInterrupt:
+        print("\nShutting down cleanly...")
 
-            print(f"Restarting in {restart_delay}s...")
-            time.sleep(restart_delay)
-
-            wait_for_port()
-            worker = StartWorker(queue)
-
-            restart_delay = min(restart_delay * 2, MAX_RESTART_DELAY)
-            last_heartbeat = time.time()
-
-        # Worker died unexpectedly
-        if not worker.is_alive():
-            print("Worker crashed.")
-
-            print(f"Restarting in {restart_delay}s...")
-            time.sleep(restart_delay)
-
-            wait_for_port()
-            worker = StartWorker(queue)
-
-            restart_delay = min(restart_delay * 2, MAX_RESTART_DELAY)
-            last_heartbeat = time.time()
+    finally:
+        worker.terminate()
+        worker.join()
+        print("Supervisor exited.")
 
 #filters the commands array to ignore any command not in the filtered categorys
 def FilterCommands(commands, filters):
