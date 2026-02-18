@@ -80,14 +80,14 @@ def OBDWorker(queue):
                             youngestUpdate = data["lastUpdate"]
                         changed[cmd] = data["value"]
             if changed:
-                queue.put(("data", changed))
+                queue.put(("data", changed, commands))
             else:
                 if youngestUpdate >= STALL_TIMEOUT:
-                    queue.put(("error", "TimeOut"))
+                    queue.put(("error", "TimeOut", None))
             
 
     except Exception as e:
-        queue.put(("error", str(e)))
+        queue.put(("error", str(e), None))
 
     finally:
         try:
@@ -101,7 +101,6 @@ def OBDWorker(queue):
 # ==============================
 # Supervisor
 # ==============================
-
 def wait_for_port():
     while True:
         ports = obd.scan_serial()
@@ -135,7 +134,7 @@ def Main():
         # Process worker messages
         while not queue.empty():
 
-            msg, data = queue.get()
+            msg, data, cmds = queue.get()
 
             if msg == "data":
                 print("Supervisor: Connection Healthy")
