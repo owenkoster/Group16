@@ -8,10 +8,15 @@ Work in progress
 
 #### How to run the software:
 Step 1:
+pip install pyzmq
+pip install obd
+Here's a link to the Python OBD documentaion for extra help: https://python-obd.readthedocs.io/en/latest/
+
+Step 2:
 In your terminal in the main directory (Group16), to compile the java code write:
 $ javac -cp “lib/jeromq-0.5.3.jar;lib/gson-2.10.1.jar” VehicleDataReceiver.java
 
-Step 2:
+Step 3:
 
 Open your first command prompt and run the java file:
 Java -cp “.;lib/jeromq-0.5.3.jar:lib/gson-2.10.1.jar” VehicleDataReceiver
@@ -19,7 +24,7 @@ Java -cp “.;lib/jeromq-0.5.3.jar:lib/gson-2.10.1.jar” VehicleDataReceiver
 Then wait for the message:
 “ZeroMQ Publisher initialized on port 5555”
 
-Step 3 (Final Step):
+Step 4 (Final Step):
 Open a second command prompt and run the python file:
 $ python OBDCommModule.py
 
