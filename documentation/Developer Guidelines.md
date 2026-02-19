@@ -4,6 +4,7 @@
 
 
 #### Layout of directory structure:
+- The documentation directory contains the user documentation and developer guidelines
 - The lib directory contains the dependencies needed for the code to be able to run.
 - The log directory contains logs from user’s drives in .csv format.
 - The reports directory contains our group’s reports as we make progress throughout the term.
