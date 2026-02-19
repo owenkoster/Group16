@@ -18,7 +18,7 @@ $ python OBDCommModule.py
 Then wait for the message:
 “ZeroMQ Publisher initialized on port 5555”
 
-Step 3 (FInal Step):
+Step 3 (Final Step):
 Open a second command prompt and run the java file:
 Java -cp “.;lib/jeromq-0.5.3.jar:lib/gson-2.10.1.jar” VehicleDataReceiver
 
