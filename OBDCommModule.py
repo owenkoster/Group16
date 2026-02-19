@@ -81,18 +81,19 @@ def OBDWorker(queue):
         availableCommands = connection.supported_commands
         commands = FilterCommands(
             CommandsToDictionary(availableCommands),
-            "telemetry"
+            ["telemetry","internal"]
         )
-        #print(commands)
+
 
         #Local rolling cache initialization
         for cmd, data in commands.items():
             OBDCACHE[cmd] = {
-                "value": None,
+                "value": "None",
                 "command": data["command"], #keeps track of what the command was
-                "prevValue": None, 
-                "lastUpdate": None
+                "prevValue": "None", 
+                "lastUpdate": time.time()
             }
+            print(data["name"])
 
         #Generate callbacks for each of the commands and tell pythonOBD to start watching them
         for cmd, data in commands.items():
@@ -101,6 +102,10 @@ def OBDWorker(queue):
         
         connection.start() #start async monitoring
         
+        #sends initial data through, allows for no update recorded to pass through
+        with cache_lock: 
+            queue.put(("data", OBDCACHE, commands))
+
         while WORKER_ALIVE:
             time.sleep(1)
             changed = {}
@@ -346,11 +351,11 @@ SYSTEM_PREFIXES = ("DTC_",)
 
 #Blocked commands that will never be run
 BLOCKED = {
-    "CLEAR_DTC",
+    "CLEAR_DTC", "GET_CURRENT_DTC",
 }
 
 # Commands for this scripts use only user should not use
-INTERNAL_ONLY = {"GET_DTC", "GET_CURRENT_DTC"}
+INTERNAL_ONLY = {"GET_DTC", }
 
 # Should only be run on command not constantly
 DISCOVERY = {
