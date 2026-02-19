@@ -204,9 +204,8 @@ def Main():
     last_heartbeat = time.time()
     restartTime = None #Keeps track of when restart should be attempted
     
-    #Local current and previous caches for the vehicle data
+    #Local current cache of the vehicle data
     CURRENT_CACHE = {}
-    PREV_CACHE = {}
 
     # Initialize ZeroMQ
     zmq_publisher = InitializeZMQ()
@@ -222,7 +221,6 @@ def Main():
 
                 #Good data sent
                 if msg == "data":
-                    PREV_CACHE = CURRENT_CACHE.copy()
                     CURRENT_CACHE.update(data)
                     
                     for cmd_name, packet in data.items():
@@ -230,7 +228,6 @@ def Main():
                         if(time.time() - packet["lastUpdate"] <= NULL_RESPONSE_TIMEOUT):
                             last_heartbeat = time.time()
                             restart_delay = INITIAL_RESTART_DELAY
-                            break
 
                         payload = {
                             "timestamp": packet["lastUpdate"] * 1000,
