@@ -192,7 +192,7 @@ class TripLogger:
             self.file.close()
 
 def Main():
-
+    queue = Queue()
     context = zmq.Context()
     socket = context.socket(zmq.PUB)
     socket.bind("tcp://*:5555")
@@ -222,6 +222,7 @@ def Main():
 
                 #Good data sent
                 if msg == "data":
+                    PREV_CACHE = CURRENT_CACHE.copy()
                     CURRENT_CACHE.update(data)
                     
                     for cmd_name, packet in data.items():
@@ -229,6 +230,7 @@ def Main():
                         if(time.time() - packet["lastUpdate"] <= NULL_RESPONSE_TIMEOUT):
                             last_heartbeat = time.time()
                             restart_delay = INITIAL_RESTART_DELAY
+                            break
 
                         payload = {
                             "timestamp": packet["lastUpdate"] * 1000,
@@ -241,17 +243,6 @@ def Main():
 
                         logger.log(cmd_name, packet["value"], packet.get("unit", ""))
                     # ---------------------------
-
-                # if msg == "data":
-                #     print("Supervisor: Connection Healthy")
-                #     print("------------------------------")
-                #     PREV_CACHE = CURRENT_CACHE.copy()
-                #     CURRENT_CACHE.update(data)
-                #     for key, value in CURRENT_CACHE.items():
-                #         if(time.time() - value["lastUpdate"] <= NULL_RESPONSE_TIMEOUT):
-                #             last_heartbeat = time.time()
-                #             restart_delay = INITIAL_RESTART_DELAY
-                #             break
 
                 #Error with the child
                 elif msg == "error":
