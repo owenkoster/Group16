@@ -7,7 +7,7 @@ import java.util.Map;
 
 public class VehicleDataReceiver {
     
-    public static void main(String[] args) {
+    public static void initDataReceiver() {
         // Create ZeroMQ context and subscriber socket
         try (ZContext context = new ZContext()) {
             ZMQ.Socket subscriber = context.createSocket(ZMQ.SUB);

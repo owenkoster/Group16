@@ -7,12 +7,13 @@ public class Main {
 
     static JFrame window;
 
+    static JPanel MainPanel;
     static JPanel DrivingMode;
     static JPanel StandardMode;
 
     public static void setDrivingMode(boolean drivingMode) {
-            DrivingMode.setVisible(drivingMode);
-            StandardMode.setVisible(!drivingMode);
+        DrivingMode.setVisible(drivingMode);
+        StandardMode.setVisible(!drivingMode);
     }
 
     public static void main(String[] args) {
@@ -61,18 +62,28 @@ public class Main {
         ModeSwapPanel.add(DrivingModeButton,BorderLayout.WEST);
         ModeSwapPanel.add(StandardModeButton,BorderLayout.EAST);
 
-        //init Driving Mode
-        DrivingMode = new JPanel();
-        DrivingMode.add(new JLabel("You are in Driving mode"));
-        //init Standard Mode
-        StandardMode = new JPanel();
-        StandardMode.add(new JLabel("You are in Standard Mode"));
+        initDrivingMode();
+        initStandardMode();
+
         //build
         window.add(Util.wrap(ModeSwapPanel),BorderLayout.NORTH);
-        window.add(DrivingMode,BorderLayout.WEST);
-        window.add(StandardMode,BorderLayout.EAST);
+        MainPanel = new JPanel();
+        MainPanel.add(DrivingMode);
+        MainPanel.add(StandardMode);
+        window.add(MainPanel,BorderLayout.CENTER);
         setDrivingMode(false);
         window.setVisible(true);
+        VehicleDataReceiver.initDataReceiver();
     }
-}
 
+    public static void initDrivingMode() {
+        DrivingMode = new JPanel();
+        DrivingMode.add(new JLabel("You are in Driving mode"));
+    }
+
+    public static void initStandardMode() {
+        StandardMode = new JPanel();
+        StandardMode.add(new JLabel("You are in Standard Mode"));
+    }
+
+}
