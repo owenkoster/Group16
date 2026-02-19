@@ -221,6 +221,8 @@ def Main():
 
                 #Good data sent
                 if msg == "data":
+                    print("DATA AVAILABLE")
+                    print("-----------------------")
                     CURRENT_CACHE.update(data)
                     
                     for cmd_name, packet in data.items():
@@ -275,12 +277,12 @@ def Main():
                 restart_delay = min(restart_delay * 2, MAX_RESTART_DELAY)
                 last_heartbeat = time.time()
                 restartTime = None
+            elif(restartTime == None):
+                for cmd, data in CURRENT_CACHE.items(): #REPLACE ME
+                    print(str(data["command"].name) + " : " + str(data["value"]) + " : " + str(data["lastUpdate"])) #REPLACE ME
 
             #Use ZeroMQ function to publish data
             PublishVehicleData(zmq_publisher, CURRENT_CACHE) #We need to send cmds through because that is the list of available commands
-
-            for cmd, data in CURRENT_CACHE.items(): #REPLACE ME
-                print(str(data["command"].name) + " : " + str(data["value"]) + " : " + str(data["lastUpdate"])) #REPLACE ME
     
     except KeyboardInterrupt:
         print("\nShutting down cleanly...")
