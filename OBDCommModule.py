@@ -6,6 +6,11 @@ import sys
 from functools import partial
 import threading
 from threading import Lock
+import zmq
+import json
+import csv
+import os
+from datetime import datetime
 
 PROGRAM_ALIVE = True
 WORKER_ALIVE = True
@@ -15,14 +20,27 @@ MAX_RESTART_DELAY = 8
 STALL_TIMEOUT = 6
 NULL_RESPONSE_TIMEOUT = 2
 
+# def CacheCallback(response, OBDCACHE, lock):
+#     if response.is_null():
+#         return
+#     with lock:
+#         OBDCACHE[response.command.name]["prevValue"] = OBDCACHE[response.command.name]["value"]
+#         OBDCACHE[response.command.name]["lastUpdate"] = time.time()
+#         OBDCACHE[response.command.name]["value"] = str(response.value)
 def CacheCallback(response, OBDCACHE, lock):
     if response.is_null():
         return
     with lock:
-        OBDCACHE[response.command.name]["prevValue"] = OBDCACHE[response.command.name]["value"]
-        OBDCACHE[response.command.name]["lastUpdate"] = time.time()
-        OBDCACHE[response.command.name]["value"] = str(response.value)
-
+        cmd_name = response.command.name
+        OBDCACHE[cmd_name]["prevValue"] = OBDCACHE[cmd_name]["value"]
+        OBDCACHE[cmd_name]["lastUpdate"] = time.time()
+        
+        if hasattr(response.value, 'magnitude'):
+            OBDCACHE[cmd_name]["value"] = response.value.magnitude
+            OBDCACHE[cmd_name]["unit"] = str(response.value.units)
+        else:
+            OBDCACHE[cmd_name]["value"] = str(response.value)
+            OBDCACHE[cmd_name]["unit"] = ""
 
 # ==============================
 # Worker Process
@@ -33,7 +51,8 @@ def OBDWorker(queue):
     cache_lock = Lock()
     try:
         baud = 38400
-        ports = obd.scan_serial()
+        #ports = obd.scan_serial()
+        ports = ["/dev/ttys006"]
 
         if not ports:
             queue.put(("error", "no_ports"))
@@ -42,7 +61,9 @@ def OBDWorker(queue):
         connection = obd.Async(
             portstr=ports[0],
             baudrate=baud,
+            protocol="6",
             fast=False
+        
         )
 
         if not connection.is_connected():
@@ -109,7 +130,8 @@ def OBDWorker(queue):
 # ==============================
 def wait_for_port():
     while True:
-        ports = obd.scan_serial()
+        # ports = obd.scan_serial()
+        ports = ["/dev/ttys006"]
         if ports:
             return
         print("Waiting for emulator...")
@@ -122,10 +144,43 @@ def StartWorker(queue):
     return p
 
 
+class TripLogger:
+    def __init__(self, log_dir="logs"):
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+
+        # Create filename: logs/trip_2025-02-18_16-30-00.csv
+        timestamp_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        self.filepath = os.path.join(log_dir, f"trip_{timestamp_str}.csv")
+        
+        self.file = open(self.filepath, mode='w', newline='', buffering=1)
+        self.writer = csv.writer(self.file)
+        
+        # Write Header
+        self.writer.writerow(["Timestamp_Unix", "PID", "Value", "Unit", "DTC_Codes"])
+        print(f"[Logger] Recording trip to: {self.filepath}")
+
+        # Log CSV
+    def log(self, pid_name, value, unit, dtc_list=None):
+        dtc_str = ";".join(dtc_list) if dtc_list else ""
+        try:
+            self.writer.writerow([time.time(), pid_name, value, unit, dtc_str])
+            self.file.flush() 
+        except Exception as e:
+            print(f"[Logger Error] {e}")
+
+    def close(self):
+        if self.file:
+            self.file.close()
+
 def Main():
     restart_delay = INITIAL_RESTART_DELAY
     queue = Queue()
 
+    context = zmq.Context()
+    socket = context.socket(zmq.PUB)
+    socket.bind("tcp://*:5555")
+    logger = TripLogger()
     wait_for_port()
     worker = StartWorker(queue)
 
@@ -144,15 +199,36 @@ def Main():
                 msg, data, cmds = queue.get()
 
                 if msg == "data":
-                    print("Supervisor: Connection Healthy")
-                    print("------------------------------")
-                    PREV_CACHE = CURRENT_CACHE.copy()
                     CURRENT_CACHE.update(data)
-                    for key, value in CURRENT_CACHE.items():
-                        if(time.time() - value["lastUpdate"] <= NULL_RESPONSE_TIMEOUT):
+                    
+                    for cmd_name, packet in data.items():
+                        
+                        if(time.time() - packet["lastUpdate"] <= NULL_RESPONSE_TIMEOUT):
                             last_heartbeat = time.time()
                             restart_delay = INITIAL_RESTART_DELAY
-                            break
+
+                        payload = {
+                            "timestamp": packet["lastUpdate"] * 1000,
+                            "pid": cmd_name,
+                            "value": packet["value"],
+                            "unit": packet.get("unit", ""),
+                            "dtc": []
+                        }
+                        socket.send_string(json.dumps(payload))
+
+                        logger.log(cmd_name, packet["value"], packet.get("unit", ""))
+                    # ---------------------------
+
+                # if msg == "data":
+                #     print("Supervisor: Connection Healthy")
+                #     print("------------------------------")
+                #     PREV_CACHE = CURRENT_CACHE.copy()
+                #     CURRENT_CACHE.update(data)
+                #     for key, value in CURRENT_CACHE.items():
+                #         if(time.time() - value["lastUpdate"] <= NULL_RESPONSE_TIMEOUT):
+                #             last_heartbeat = time.time()
+                #             restart_delay = INITIAL_RESTART_DELAY
+                #             break
 
 
                 elif msg == "error":
@@ -190,7 +266,7 @@ def Main():
 
             #PUT COMMUNICATION STUFF HERE
             for cmd, data in CURRENT_CACHE.items(): #REPLACE ME
-                print(str(data["command"].name) + " : " + data["value"] + " : " + str(data["lastUpdate"])) #REPLACE ME
+                print(str(data["command"].name) + " : " + str(data["value"]) + " : " + str(data["lastUpdate"])) #REPLACE ME
     
     except KeyboardInterrupt:
         print("\nShutting down cleanly...")
@@ -198,6 +274,7 @@ def Main():
     finally:
         worker.terminate()
         worker.join()
+        logger.close()
         print("Supervisor exited.")
 
 #filters the commands array to ignore any command not in the filtered categorys
