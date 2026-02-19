@@ -12,8 +12,10 @@ import csv
 import os
 from datetime import datetime
 
+#Program alive variables
 PROGRAM_ALIVE = True
 WORKER_ALIVE = True
+
 
 INITIAL_RESTART_DELAY = 2
 MAX_RESTART_DELAY = 8
@@ -46,18 +48,22 @@ def CacheCallback(response, OBDCACHE, lock):
 # Worker Process
 # ==============================
 def OBDWorker(queue):
+
     global WORKER_ALIVE
+    
     OBDCACHE = {}
-    cache_lock = Lock()
+    
+    cache_lock = Lock() #Cache update lock to prevent race conditions
+
     try:
-        baud = 38400
-        #ports = obd.scan_serial()
-        ports = ["/dev/ttys006"]
+        baud = 38400 #Set baud rate, this will eventually need to be done dynamically
+        ports = obd.scan_serial() #scan for available ports
 
         if not ports:
             queue.put(("error", "no_ports"))
             return
 
+        #connect to python obd
         connection = obd.Async(
             portstr=ports[0],
             baudrate=baud,
@@ -66,10 +72,12 @@ def OBDWorker(queue):
         
         )
 
+        #connection error
         if not connection.is_connected():
             queue.put(("error", "not_connected"))
             return
 
+        #filter available commands
         availableCommands = connection.supported_commands
         commands = FilterCommands(
             CommandsToDictionary(availableCommands),
@@ -77,38 +85,49 @@ def OBDWorker(queue):
         )
         #print(commands)
 
-        #Rolling cache
+        #Local rolling cache initialization
         for cmd, data in commands.items():
             OBDCACHE[cmd] = {
                 "value": None,
-                "command": data["command"],
+                "command": data["command"], #keeps track of what the command was
                 "prevValue": None, 
                 "lastUpdate": None
             }
 
+        #Generate callbacks for each of the commands and tell pythonOBD to start watching them
         for cmd, data in commands.items():
             callback_with_cache = partial(CacheCallback, OBDCACHE=OBDCACHE, lock=cache_lock)
             connection.watch(data["command"], callback=callback_with_cache)
-        connection.start()
+        
+        connection.start() #start async monitoring
+        
         while WORKER_ALIVE:
             time.sleep(1)
             changed = {}
             most_recent_update = 0
 
+            #This chunk of code updates the rolling cache,
+            # and only sends data through up to the parent if the data changed.
+            # Was done as a performance enhancement
+
+            #lock the cache
             with cache_lock:
                 for cmd, data in OBDCACHE.items():
+                    #Find the most recent update, done for stall detection
                     if data["lastUpdate"]:
                         if data["lastUpdate"] > most_recent_update:
                             most_recent_update = data["lastUpdate"]
-
+                    #check if the data was updated
                     if data["value"] != data["prevValue"]:
-                        changed[cmd] = data
+                        changed[cmd] = data 
 
+            #send updated data to the parent
             if changed:
                 queue.put(("data", changed, commands))
                 for cmd in changed:
                     OBDCACHE[cmd]["prevValue"] = OBDCACHE[cmd]["value"]
 
+            #Detect stalls
             if most_recent_update and time.time() - most_recent_update > STALL_TIMEOUT:
                 queue.put(("error", "TimeOut", None))
             
@@ -118,6 +137,7 @@ def OBDWorker(queue):
 
     finally:
         try:
+            #clean shutdown of the connection
             connection.stop()
             connection.unwatch_all()
             connection.close() #close connection
@@ -125,9 +145,7 @@ def OBDWorker(queue):
             pass
 
 
-# ==============================
-# Supervisor
-# ==============================
+#Scan for available com ports
 def wait_for_port():
     while True:
         # ports = obd.scan_serial()
@@ -137,7 +155,7 @@ def wait_for_port():
         print("Waiting for emulator...")
         time.sleep(.25)
 
-
+#helper function to start the worker process
 def StartWorker(queue):
     p = Process(target=OBDWorker, args=(queue,))
     p.start()
@@ -174,8 +192,6 @@ class TripLogger:
             self.file.close()
 
 def Main():
-    restart_delay = INITIAL_RESTART_DELAY
-    queue = Queue()
 
     context = zmq.Context()
     socket = context.socket(zmq.PUB)
@@ -184,10 +200,16 @@ def Main():
     wait_for_port()
     worker = StartWorker(queue)
 
+    #initialize the childs heartbeat
     last_heartbeat = time.time()
-    restartTime = None
+    restartTime = None #Keeps track of when restart should be attempted
+    
+    #Local current and previous caches for the vehicle data
     CURRENT_CACHE = {}
     PREV_CACHE = {}
+
+    # Initialize ZeroMQ
+    zmq_publisher = InitializeZMQ()
 
     try:
         while PROGRAM_ALIVE:
@@ -196,8 +218,9 @@ def Main():
             # Process worker messages
             while not queue.empty():
 
-                msg, data, cmds = queue.get()
+                msg, data, availableCommands = queue.get()
 
+                #Good data sent
                 if msg == "data":
                     CURRENT_CACHE.update(data)
                     
@@ -230,7 +253,7 @@ def Main():
                 #             restart_delay = INITIAL_RESTART_DELAY
                 #             break
 
-
+                #Error with the child
                 elif msg == "error":
                     print("Worker error: " + data)
                     restartTime = time.time() + restart_delay
@@ -256,6 +279,7 @@ def Main():
                 print(f"Restarting in {restart_delay}s...")
                 restartTime = time.time() + restart_delay
 
+            #Worker process restart logic
             if(restartTime != None and time.time() >= restartTime):
                 wait_for_port()
                 worker = StartWorker(queue)
@@ -264,7 +288,9 @@ def Main():
                 last_heartbeat = time.time()
                 restartTime = None
 
-            #PUT COMMUNICATION STUFF HERE
+            #Use ZeroMQ function to publish data
+            PublishVehicleData(zmq_publisher, CURRENT_CACHE) #We need to send cmds through because that is the list of available commands
+
             for cmd, data in CURRENT_CACHE.items(): #REPLACE ME
                 print(str(data["command"].name) + " : " + str(data["value"]) + " : " + str(data["lastUpdate"])) #REPLACE ME
     
@@ -272,6 +298,9 @@ def Main():
         print("\nShutting down cleanly...")
 
     finally:
+        # Cleanup ZeroMQ
+        CleanupZMQ(zmq_publisher)
+
         worker.terminate()
         worker.join()
         logger.close()
@@ -353,6 +382,96 @@ LOW_FREQ = {
 
 #ZMQ stuff
 
+def InitializeZMQ(port=5555):
+
+    """
+    Initialize ZeroMQ publisher socket.
+
+    Args:
+        port: Port number to bind to (default: 5555)
+
+    Returns:
+        Dictionary containing context and publisher socket
+    """
+
+    try:
+        context = zmq.Context()
+        publisher = context.socket(zmq.PUB)
+        publisher.bind(f"tcp://*:{port}")
+        print(f"ZeroMQ Publisher initialized on port {port}")
+
+        return {
+            "context": context,
+            "publisher": publisher,
+            "enabled": True
+        }
+
+    except Exception as e:
+        print(f"Failed to initialize ZeroMQ: {e}")
+        return {
+            "context": None,
+            "publisher": None,
+            "enabled": False
+        }
+
+def PublishVehicleData(zmq_publisher, cache_data):
+
+    """
+    Publish vehicle data over ZeroMQ.
+
+    Args:
+        zmq_publisher: Dictionary containing ZeroMQ publisher info
+        cache_data: Current vehicle data cache (CURRENT_CACHE)
+    """
+
+    if not zmq_publisher or not zmq_publisher.get("enabled"):
+        return
+    
+    try:
+        # Prepare data for transmission
+        vehicle_data = {
+            "timestamp": time.time(),
+            "data": {}
+        }
+
+        # Convert cache data to JSON-serializable format
+        for cmd, data in cache_data.items():
+            vehicle_data["data"][cmd] = {
+                "value": data["value"],
+                "lastUpdate": data["lastUpdate"]
+            }
+
+        # Publish only if there's data
+        if vehicle_data["data"]:
+            message = json.dumps(vehicle_data)
+            zmq_publisher["publisher"].send_string(f"VEHICLE_DATA {message}")
+            #debug:
+            #print(f"Published {len(vehicle_data['data'])} values via ZeroMQ")
+
+    except Exception as e:
+        print(f"Error publishing to ZeroMQ: {e}")
+
+def CleanupZMQ(zmq_publisher):
+    
+    """
+    Cleanup ZeroMQ resources.
+
+    Args:
+        zmq_publisher: Dictionary containing ZeroMQ publisher info
+    """
+
+    if not zmq_publisher or not zmq_publisher.get("enabled"):
+        return
+
+    try:
+        print("Shutting down ZeroMQ...")
+        if zmq_publisher["publisher"]:
+            zmq_publisher["publisher"].close()
+        if zmq_publisher["context"]:
+            zmq_publisher["context"].term()
+        print("ZeroMQ shutdown complete.")
+    except Exception as e:
+        print(f"Error during ZeroMQ cleanup: {e}")
 
 #Call main program
 if __name__ == "__main__":
