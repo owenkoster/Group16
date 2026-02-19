@@ -148,8 +148,8 @@ def OBDWorker(queue):
 #Scan for available com ports
 def wait_for_port():
     while True:
-        # ports = obd.scan_serial()
-        ports = ["/dev/ttys006"]
+        ports = obd.scan_serial()
+        #ports = ["/dev/ttys006"]
         if ports:
             return
         print("Waiting for emulator...")
@@ -193,9 +193,9 @@ class TripLogger:
 
 def Main():
     queue = Queue()
-    context = zmq.Context()
-    socket = context.socket(zmq.PUB)
-    socket.bind("tcp://*:5555")
+    #context = zmq.Context() ZMQ communication already handled by zmq_publisher
+    #socket = context.socket(zmq.PUB)
+    #socket.bind("tcp://*:5555")
     logger = TripLogger()
     wait_for_port()
     worker = StartWorker(queue)
@@ -236,7 +236,7 @@ def Main():
                             "unit": packet.get("unit", ""),
                             "dtc": []
                         }
-                        socket.send_string(json.dumps(payload))
+                        #socket.send_string(json.dumps(payload))
 
                         logger.log(cmd_name, packet["value"], packet.get("unit", ""))
                     # ---------------------------
