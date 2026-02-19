@@ -9,14 +9,17 @@ from threading import Lock
 import zmq
 import json
 
+#Program alive variables
 PROGRAM_ALIVE = True
 WORKER_ALIVE = True
+
 
 INITIAL_RESTART_DELAY = 2
 MAX_RESTART_DELAY = 8
 STALL_TIMEOUT = 6
 NULL_RESPONSE_TIMEOUT = 2
 
+#callback function to update the rolling cache
 def CacheCallback(response, OBDCACHE, lock):
     if response.is_null():
         return
@@ -30,27 +33,34 @@ def CacheCallback(response, OBDCACHE, lock):
 # Worker Process
 # ==============================
 def OBDWorker(queue):
+
     global WORKER_ALIVE
+    
     OBDCACHE = {}
-    cache_lock = Lock()
+    
+    cache_lock = Lock() #Cache update lock to prevent race conditions
+
     try:
-        baud = 38400
-        ports = obd.scan_serial()
+        baud = 38400 #Set baud rate, this will eventually need to be done dynamically
+        ports = obd.scan_serial() #scan for available ports
 
         if not ports:
             queue.put(("error", "no_ports"))
             return
 
+        #connect to python obd
         connection = obd.Async(
             portstr=ports[0],
             baudrate=baud,
             fast=False
         )
 
+        #connection error
         if not connection.is_connected():
             queue.put(("error", "not_connected"))
             return
 
+        #filter available commands
         availableCommands = connection.supported_commands
         commands = FilterCommands(
             CommandsToDictionary(availableCommands),
@@ -58,38 +68,49 @@ def OBDWorker(queue):
         )
         #print(commands)
 
-        #Rolling cache
+        #Local rolling cache initialization
         for cmd, data in commands.items():
             OBDCACHE[cmd] = {
                 "value": None,
-                "command": data["command"],
+                "command": data["command"], #keeps track of what the command was
                 "prevValue": None, 
                 "lastUpdate": None
             }
 
+        #Generate callbacks for each of the commands and tell pythonOBD to start watching them
         for cmd, data in commands.items():
             callback_with_cache = partial(CacheCallback, OBDCACHE=OBDCACHE, lock=cache_lock)
             connection.watch(data["command"], callback=callback_with_cache)
-        connection.start()
+        
+        connection.start() #start async monitoring
+        
         while WORKER_ALIVE:
             time.sleep(1)
             changed = {}
             most_recent_update = 0
 
+            #This chunk of code updates the rolling cache,
+            # and only sends data through up to the parent if the data changed.
+            # Was done as a performance enhancement
+
+            #lock the cache
             with cache_lock:
                 for cmd, data in OBDCACHE.items():
+                    #Find the most recent update, done for stall detection
                     if data["lastUpdate"]:
                         if data["lastUpdate"] > most_recent_update:
                             most_recent_update = data["lastUpdate"]
-
+                    #check if the data was updated
                     if data["value"] != data["prevValue"]:
-                        changed[cmd] = data
+                        changed[cmd] = data 
 
+            #send updated data to the parent
             if changed:
                 queue.put(("data", changed, commands))
                 for cmd in changed:
                     OBDCACHE[cmd]["prevValue"] = OBDCACHE[cmd]["value"]
 
+            #Detect stalls
             if most_recent_update and time.time() - most_recent_update > STALL_TIMEOUT:
                 queue.put(("error", "TimeOut", None))
             
@@ -99,6 +120,7 @@ def OBDWorker(queue):
 
     finally:
         try:
+            #clean shutdown of the connection
             connection.stop()
             connection.unwatch_all()
             connection.close() #close connection
@@ -106,9 +128,7 @@ def OBDWorker(queue):
             pass
 
 
-# ==============================
-# Supervisor
-# ==============================
+#Scan for available com ports
 def wait_for_port():
     while True:
         ports = obd.scan_serial()
@@ -117,7 +137,7 @@ def wait_for_port():
         print("Waiting for emulator...")
         time.sleep(.25)
 
-
+#helper function to start the worker process
 def StartWorker(queue):
     p = Process(target=OBDWorker, args=(queue,))
     p.start()
@@ -125,14 +145,18 @@ def StartWorker(queue):
 
 
 def Main():
-    restart_delay = INITIAL_RESTART_DELAY
-    queue = Queue()
 
-    wait_for_port()
-    worker = StartWorker(queue)
+    restart_delay = INITIAL_RESTART_DELAY #delay for restarting the child after a disconnect
+    queue = Queue() #initialize the queue
 
+    wait_for_port() #scan for available com ports
+    worker = StartWorker(queue) #initialize the child
+
+    #initialize the childs heartbeat
     last_heartbeat = time.time()
-    restartTime = None
+    restartTime = None #Keeps track of when restart should be attempted
+    
+    #Local current and previous caches for the vehicle data
     CURRENT_CACHE = {}
     PREV_CACHE = {}
 
@@ -146,8 +170,9 @@ def Main():
             # Process worker messages
             while not queue.empty():
 
-                msg, data, cmds = queue.get()
+                msg, data, availableCommands = queue.get()
 
+                #Good data sent
                 if msg == "data":
                     print("Supervisor: Connection Healthy")
                     print("------------------------------")
@@ -159,7 +184,7 @@ def Main():
                             restart_delay = INITIAL_RESTART_DELAY
                             break
 
-
+                #Error with the child
                 elif msg == "error":
                     print("Worker error: " + data)
                     restartTime = time.time() + restart_delay
@@ -185,6 +210,7 @@ def Main():
                 print(f"Restarting in {restart_delay}s...")
                 restartTime = time.time() + restart_delay
 
+            #Worker process restart logic
             if(restartTime != None and time.time() >= restartTime):
                 wait_for_port()
                 worker = StartWorker(queue)
@@ -193,10 +219,8 @@ def Main():
                 last_heartbeat = time.time()
                 restartTime = None
 
-            #PUT COMMUNICATION STUFF HERE
-
             #Use ZeroMQ function to publish data
-            PublishVehicleData(zmq_publisher, CURRENT_CACHE)
+            PublishVehicleData(zmq_publisher, CURRENT_CACHE) #We need to send cmds through because that is the list of available commands
 
             for cmd, data in CURRENT_CACHE.items(): #REPLACE ME
                 print(str(data["command"].name) + " : " + data["value"] + " : " + str(data["lastUpdate"])) #REPLACE ME
