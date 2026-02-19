@@ -12,7 +12,6 @@
 - The OBDCommModule.py file is the main python file that communicates with the vehicle’s OBD.
 - The Project Living Document.pdf is our project’s living document.
 - The README.md file contains a short description of our project.
-- The VehicleDataReceiver.java file sends signals to the python file to extract data from the vehicle, so the python file can then send the data over.
 
 #### How to build the software:
 
