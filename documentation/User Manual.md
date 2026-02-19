@@ -27,7 +27,7 @@ To stop:
 Ctrl+c in each window
 
 #### How to report a bug:
-Work in progress
+Please report bugs to GitHub issues. Please leave a detailed explanation of what the bug is: what was the actual behavior? vs. what was the expected behavior?
 
 #### Known bugs:
-Work in progress
+None yet
