@@ -12,21 +12,22 @@ In your terminal in the main directory (Group16), to compile the java code write
 $ javac -cp “lib/jeromq-0.5.3.jar;lib/gson-2.10.1.jar” VehicleDataReceiver.java
 
 Step 2:
-Open your first command prompt and run the python file:
-$ python OBDCommModule.py
+
+Open your first command prompt and run the java file:
+Java -cp “.;lib/jeromq-0.5.3.jar:lib/gson-2.10.1.jar” VehicleDataReceiver
 
 Then wait for the message:
 “ZeroMQ Publisher initialized on port 5555”
 
-Step 3 (FInal Step):
-Open a second command prompt and run the java file:
-Java -cp “.;lib/jeromq-0.5.3.jar:lib/gson-2.10.1.jar” VehicleDataReceiver
+Step 3 (Final Step):
+Open a second command prompt and run the python file:
+$ python OBDCommModule.py
 
 To stop:
 Ctrl+c in each window
 
 #### How to report a bug:
-Work in progress
+Please report bugs to GitHub issues. Please leave a detailed explanation of what the bug is: what was the actual behavior? vs. what was the expected behavior?
 
 #### Known bugs:
-Work in progress
+None yet
