@@ -1,4 +1,3 @@
-package main.java;
 import org.zeromq.ZMQ;
 import org.zeromq.ZContext;
 import com.google.gson.Gson;

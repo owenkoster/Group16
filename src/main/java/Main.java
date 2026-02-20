@@ -17,6 +17,18 @@ public class Main {
     }
 
     public static void main(String[] args) {
+        try {
+            // Launch Python script
+            Process pythonProcess = PythonRunner.runPythonScript("src/main/python/OBDCommModule.py");
+
+            // Java continues to run (you can communicate over ZeroMQ)
+            // Wait for Python to finish if desired:
+            // pythonProcess.waitFor();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
         //style
         try {
             for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
