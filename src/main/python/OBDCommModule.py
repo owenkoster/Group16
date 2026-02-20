@@ -93,7 +93,7 @@ def OBDWorker(queue):
                 "prevValue": "None", 
                 "lastUpdate": time.time()
             }
-            print(data["name"])
+            #print(data["name"]) Testing print statement
 
         #Generate callbacks for each of the commands and tell pythonOBD to start watching them
         for cmd, data in commands.items():
@@ -208,6 +208,7 @@ def Main():
     #initialize the childs heartbeat
     last_heartbeat = time.time()
     restartTime = None #Keeps track of when restart should be attempted
+    restart_delay = INITIAL_RESTART_DELAY
     
     #Local current cache of the vehicle data
     CURRENT_CACHE = {}
@@ -226,8 +227,8 @@ def Main():
 
                 #Good data sent
                 if msg == "data":
-                    print("DATA AVAILABLE")
-                    print("-----------------------")
+                    #print("DATA AVAILABLE")
+                    #print("-----------------------")
                     CURRENT_CACHE.update(data)
                     
                     for cmd_name, packet in data.items():
@@ -282,9 +283,10 @@ def Main():
                 restart_delay = min(restart_delay * 2, MAX_RESTART_DELAY)
                 last_heartbeat = time.time()
                 restartTime = None
-            elif(restartTime == None):
-                for cmd, data in CURRENT_CACHE.items(): #REPLACE ME
-                    print(str(data["command"].name) + " : " + str(data["value"]) + " : " + str(data["lastUpdate"])) #REPLACE ME
+            #Removed testing print statements
+            #elif(restartTime == None):
+                #for cmd, data in CURRENT_CACHE.items(): #REPLACE ME
+                #    print(str(data["command"].name) + " : " + str(data["value"]) + " : " + str(data["lastUpdate"])) #REPLACE ME
 
             #Use ZeroMQ function to publish data
             PublishVehicleData(zmq_publisher, CURRENT_CACHE) #We need to send cmds through because that is the list of available commands
