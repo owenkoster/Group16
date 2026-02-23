@@ -14,7 +14,10 @@
 - The README.md file contains a short description of our project.
 
 #### How to build the software:
-
+ - To build and run the software using Maven, run the commands below in the terminal
+#####
+ - mvn clean package
+ - java -jar target/vehicle-project-1.0-SNAPSHOT.jar
 
 #### How to test the software:
 
