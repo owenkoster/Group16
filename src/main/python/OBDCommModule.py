@@ -287,9 +287,12 @@ def Main():
             #elif(restartTime == None):
                 #for cmd, data in CURRENT_CACHE.items(): #REPLACE ME
                 #    print(str(data["command"].name) + " : " + str(data["value"]) + " : " + str(data["lastUpdate"])) #REPLACE ME
-
+            
             #Use ZeroMQ function to publish data
-            PublishVehicleData(zmq_publisher, CURRENT_CACHE) #We need to send cmds through because that is the list of available commands
+            if(not CURRENT_CACHE):
+                PublishVehicleData(zmq_publisher, {}) #Sends empty data if no data is available
+            else:
+                PublishVehicleData(zmq_publisher, CURRENT_CACHE) #We need to send cmds through because that is the list of available commands
     
     except KeyboardInterrupt:
         print("\nShutting down cleanly...")
@@ -439,9 +442,10 @@ def PublishVehicleData(zmq_publisher, cache_data):
             }
 
         # Publish only if there's data
-        if vehicle_data["data"]:
-            message = json.dumps(vehicle_data)
-            zmq_publisher["publisher"].send_string(f"VEHICLE_DATA {message}")
+        # Test to send empty data to notify UI of no connection 
+        #if vehicle_data["data"]:
+        message = json.dumps(vehicle_data)
+        zmq_publisher["publisher"].send_string(f"VEHICLE_DATA {message}")
             #debug:
             #print(f"Published {len(vehicle_data['data'])} values via ZeroMQ")
 
