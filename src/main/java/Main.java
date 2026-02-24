@@ -2,6 +2,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 public class Main {
 
@@ -17,9 +19,10 @@ public class Main {
     }
 
     public static void main(String[] args) {
+        Process pythonProcess;
         try {
             // Launch Python script
-            Process pythonProcess = PythonRunner.runPythonScript("src/main/python/OBDCommModule.py");
+            pythonProcess = PythonRunner.runPythonScript("src/main/python/OBDCommModule.py");
 
             // Java continues to run (you can communicate over ZeroMQ)
             // Wait for Python to finish if desired:
@@ -27,6 +30,7 @@ public class Main {
 
         } catch (Exception e) {
             e.printStackTrace();
+            return;
         }
 
         //style
@@ -43,9 +47,20 @@ public class Main {
         //window
         window = new JFrame();
         window.setTitle("OBD-2GO!");
-        window.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        window.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         window.setSize(800,500);
         window.setLocationRelativeTo(null);
+        window.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                int response = JOptionPane.showConfirmDialog(window, "Are you sure you want to exit?",
+                        "Confirm Exit", JOptionPane.YES_NO_OPTION);
+                if (response == JOptionPane.YES_OPTION) {
+                    pythonProcess.destroy();
+                    System.exit(0);
+                }
+            }
+        });
 
         //mode swapping buttons
         JButton DrivingModeButton = new JButton("Driving Mode");
