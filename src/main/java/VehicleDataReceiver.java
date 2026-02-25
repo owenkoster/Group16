@@ -9,7 +9,7 @@ import com.google.gson.JsonObject;
 
 public class VehicleDataReceiver {
 
-    private static void sendShutdownCommand() {
+    public static void sendShutdownCommand() {
       try (ZContext context = new ZContext()) {
         ZMQ.Socket requester = context.createSocket(ZMQ.REQ);
         requester.connect("tcp://localhost:5556");
