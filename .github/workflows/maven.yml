@@ -5,7 +5,10 @@
 # They are provided by a third-party and are governed by
 # separate terms of service, privacy policy, and support
 # documentation.
-
+permissions:
+  contents: read
+  security-events: write
+  id-token: write # Only required if publishing OIDC-based attestations
 name: Java CI with Maven
 
 on:
