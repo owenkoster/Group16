@@ -71,7 +71,6 @@ def OBDWorker(queue, portIndex):
         connection = obd.Async(
             portstr=ports[portIndex],
             baudrate=baud,
-            protocol="6",
             fast=False
         
         )
