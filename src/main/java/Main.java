@@ -1,9 +1,15 @@
-import javax.swing.*;
-import java.awt.*;
+import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.UIManager;
 
 public class Main {
 
@@ -56,7 +62,8 @@ public class Main {
                 int response = JOptionPane.showConfirmDialog(window, "Are you sure you want to exit?",
                         "Confirm Exit", JOptionPane.YES_NO_OPTION);
                 if (response == JOptionPane.YES_OPTION) {
-                    pythonProcess.destroy();
+                    //pythonProcess.destroy();
+                    VehicleDataReceiver.sendShutdownCommand();
                     System.exit(0);
                 }
             }

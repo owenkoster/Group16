@@ -8,6 +8,30 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 public class VehicleDataReceiver {
+
+    public static void sendShutdownCommand() {
+      try (ZContext context = new ZContext()) {
+        ZMQ.Socket requester = context.createSocket(ZMQ.REQ);
+        requester.connect("tcp://localhost:5556");
+
+        // Set timeout to avoid hanging
+        requester.setReceiveTimeOut(2000); // 2 second timeout
+
+        // Send shutdown command
+        System.out.println("Sending shutdown command to Python...");
+        requester.send("SHUTDOWN".getBytes(ZMQ.CHARSET), 0);
+
+        // Wait for acknowledgment
+        String reply = requester.recvStr(0);
+        if (reply != null) {
+          System.out.println("Python response: " + reply);
+        }
+
+      } catch (Exception e) {
+        System.out.println("Could not send shutdown command: " + e.getMessage());
+
+      }
+    }
     
     public static void initDataReceiver() {
         // Create ZeroMQ context and subscriber socket
@@ -68,6 +92,9 @@ public class VehicleDataReceiver {
             }
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+          // Ensure shutdown is sent even on error
+          sendShutdownCommand();
         }
     }
     
@@ -86,7 +113,7 @@ public class VehicleDataReceiver {
                 double rpm = Double.parseDouble(numericPart);
                 
                 if (rpm > 5000) {
-                    System.out.println("⚠️  WARNING: High RPM detected: " + rpm);
+                    System.out.println("WARNING: High RPM detected: " + rpm);
                 }
             } catch (Exception e) {
                 // Handle parsing errors
@@ -103,7 +130,7 @@ public class VehicleDataReceiver {
                 double speed = Double.parseDouble(numericPart);
                 
                 if (speed > 120) {
-                    System.out.println("⚠️  WARNING: High speed detected: " + speed);
+                    System.out.println("WARNING: High speed detected: " + speed);
                 }
             } catch (Exception e) {
                 // Handle parsing errors
@@ -120,7 +147,7 @@ public class VehicleDataReceiver {
                 double temp = Double.parseDouble(numericPart);
                 
                 if (temp > 100) {
-                    System.out.println("ALERT: Engine overheating! Temp: " + temp + "C");
+                    System.out.println("ALERT: Engine overheating! Temp: " + temp + "degrees C");
                 }
             } catch (Exception e) {
                 // Handle parsing errors
