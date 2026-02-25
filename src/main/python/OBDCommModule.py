@@ -454,7 +454,7 @@ def StartReplyServer():
 
                 elif request == "STATUS":
                     response = {"status": "ok", "connected": True, "uptime": time.time()}
-                    socket.end_string(json.dumps(response))
+                    socket.send_string(json.dumps(response))
 
                 else:
                     response = {"status": "error", "message": "Unknown command"}
