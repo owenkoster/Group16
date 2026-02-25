@@ -19,7 +19,7 @@ public class VehicleDataReceiver {
 
         // Send shutdown command
         System.out.println("Sending shutdown command to Python...");
-        requeseter.send("SHUTDOWN".getBytes(ZMQ.CHARSET), 0);
+        requester.send("SHUTDOWN".getBytes(ZMQ.CHARSET), 0);
 
         // Wait for acknowledgment
         String reply = requester.recvStr(0);
@@ -27,7 +27,7 @@ public class VehicleDataReceiver {
           System.out.println("Python response: " + reply);
         }
 
-      } catch (Excpetion e) {
+      } catch (Exception e) {
         System.out.println("Could not send shutdown command: " + e.getMessage());
 
       }
@@ -95,6 +95,7 @@ public class VehicleDataReceiver {
         } finally {
           // Ensure shutdown is sent even on error
           sendShutdownCommand();
+        }
     }
     
     /**
