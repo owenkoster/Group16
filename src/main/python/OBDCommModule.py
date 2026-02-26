@@ -59,10 +59,10 @@ def OBDWorker(queue):
         baud = 38400 #Set baud rate, this will eventually need to be done dynamically
         ports = obd.scan_serial() #scan for available ports
 
+        print("TEST PORTS" + str(ports))
         if not ports:
             queue.put(("error", "no_ports"))
             return
-        print("TEST PORTS" + str(ports))
         #connect to python obd
         connection = obd.Async(
             portstr=ports[0],
