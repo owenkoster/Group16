@@ -1,22 +1,17 @@
-import java.awt.BorderLayout;
-import java.awt.Dimension;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.Map;
+import java.util.Vector;
 
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
+import javax.swing.*;
 import javax.swing.plaf.FontUIResource;
 
-import org.jfree.chart.ChartPanel;
-import org.jfree.chart.JFreeChart;
-import org.jfree.chart.axis.NumberAxis;
+import com.google.gson.JsonElement;
+import org.jfree.chart.*;
+import org.jfree.chart.axis.*;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.DefaultXYItemRenderer;
 import org.jfree.chart.ui.RectangleInsets;
@@ -34,12 +29,15 @@ public class Main {
     static JPanel ModeSwapPanel;
     static JPanel ConnectingPanel;
 
+    static Vector<JLabel> allDataVector = new Vector<>();
+    static JList<JLabel> allDataList = new JList<>();
+
     static XYSeriesCollection dataset;
     static XYSeriesCollection seriesCollection;
     static double[][] currentData = new double[2][10];
 
     // This would normally be like 1, but for testing higher values make more sense
-    public static final double DRIVING_MODE_SPEED_THRESHOLD = 100;
+    public static final double DRIVING_MODE_SPEED_THRESHOLD = 200;
 
     public static void setDrivingMode(boolean drivingMode) {
         DrivingMode.setVisible(drivingMode);
@@ -156,7 +154,20 @@ public class Main {
             newSeries.add(0,VehicleDataReceiver.speed);
             dataset.removeSeries(0);
             dataset.addSeries(newSeries);
+            allDataVector = new Vector<>();
+            for (Map.Entry<String, JsonElement> entry : VehicleDataReceiver.data.entrySet()) {
+                try {
+                    entry.getValue().getAsJsonObject().get("value").getAsDouble();
+                } catch (NumberFormatException e) {
+
+                }
+                JLabel label = new JLabel(entry.getKey()+": "+entry.getValue().getAsJsonObject().get("value").toString());
+                label.setFont(Util.SMALL_FONT);
+                allDataVector.add(label);
+            }
+            allDataList.setListData(allDataVector);
         });
+        System.out.println(VehicleDataReceiver.data.get("GET_DTC"));
         if (VehicleDataReceiver.speed > DRIVING_MODE_SPEED_THRESHOLD) {
             setDrivingMode(true);
         }
@@ -187,11 +198,22 @@ public class Main {
         ChartPanel graph = new ChartPanel(chart);
         graph.setPreferredSize(new Dimension(400,300));
         DrivingMode.add(graph,BorderLayout.WEST);
+
+        JPanel DrivingModeRightPanel = new JPanel();
+        JLabel DTCLabel = new JLabel("No Trouble Codes");
+        DTCLabel.setFont(Util.SMALL_FONT);
+        DrivingModeRightPanel.add(DTCLabel,BorderLayout.NORTH);
+        DrivingMode.add(DrivingModeRightPanel,BorderLayout.EAST);
     }
 
     public static void initStandardMode() {
         StandardMode = new JPanel();
-        StandardMode.add(new JLabel("You are in Standard Mode"));
+        allDataList = new JList<>();
+        allDataList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        allDataList.setCellRenderer(new MyCellRenderer());
+        JScrollPane scrollPane = new JScrollPane(allDataList);
+        scrollPane.setPreferredSize(new Dimension(450,380));
+        StandardMode.add(scrollPane);
     }
 
 }
