@@ -96,9 +96,10 @@ public class VehicleDataReceiver {
 
                         String value = commandData.get("value").getAsString();
                         double lastUpdate = commandData.get("lastUpdate").getAsDouble();
+                        String unit = commandData.get("unit").getAsString();
 
-                        System.out.println(commandName + ": " + value +
-                                " (updated: " + lastUpdate + ")");
+                        System.out.println(commandName + ": " + value + " " + unit +
+                                " (updated: " + lastUpdate +")");
                     }
                     System.out.println("==================================\n");
 

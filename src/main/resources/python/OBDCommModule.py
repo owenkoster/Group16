@@ -91,6 +91,7 @@ def OBDWorker(queue, currentPort):
             OBDCACHE[cmd] = {
                 "value": "None",
                 "command": data["command"], #keeps track of what the command was
+                "unit" : "None",
                 "prevValue": "None", 
                 "lastUpdate": time.time()
             }
@@ -125,14 +126,13 @@ def OBDWorker(queue, currentPort):
                             most_recent_update = data["lastUpdate"]
                     #check if the data was updated
                     if data["value"] != data["prevValue"]:
-                        changed[cmd] = data 
+                        changed[cmd] = data
 
             #send updated data to the parent
             if changed:
                 queue.put(("data", changed, commands))
                 for cmd in changed:
                     OBDCACHE[cmd]["prevValue"] = OBDCACHE[cmd]["value"]
-
             #Detect stalls
             if most_recent_update and time.time() - most_recent_update > STALL_TIMEOUT:
                 queue.put(("error", "TimeOut", None))
@@ -504,6 +504,7 @@ def PublishVehicleData(zmq_publisher, cache_data):
         for cmd, data in cache_data.items():
             vehicle_data["data"][cmd] = {
                 "value": data["value"],
+                "unit": data["unit"],
                 "lastUpdate": data["lastUpdate"]
             }
 
