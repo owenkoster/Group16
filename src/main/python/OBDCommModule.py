@@ -62,7 +62,7 @@ def OBDWorker(queue):
         if not ports:
             queue.put(("error", "no_ports"))
             return
-
+        print("TEST PORTS" + str(ports))
         #connect to python obd
         connection = obd.Async(
             portstr=ports[0],
