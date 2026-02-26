@@ -47,7 +47,7 @@ def CacheCallback(response, OBDCACHE, lock):
 # ==============================
 # Worker Process
 # ==============================
-def OBDWorker(queue, portIndex):
+def OBDWorker(queue):
 
     global WORKER_ALIVE
     
@@ -59,18 +59,15 @@ def OBDWorker(queue, portIndex):
         baud = 38400 #Set baud rate, this will eventually need to be done dynamically
         ports = obd.scan_serial() #scan for available ports
 
-        if (portIndex >= len(ports)):
-            portIndex = 0
-        print("Current Port Index: " + str(portIndex))
-        print("Current Port: " + str(ports[portIndex]))
+        print("TEST PORTS" + str(ports))
         if not ports:
             queue.put(("error", "no_ports"))
             return
-
         #connect to python obd
         connection = obd.Async(
-            portstr=ports[portIndex],
+            portstr=ports[0],
             baudrate=baud,
+            protocol="6",
             fast=False
         
         )
@@ -164,8 +161,8 @@ def wait_for_port():
         time.sleep(.25)
 
 #helper function to start the worker process
-def StartWorker(queue, portIndex):
-    p = Process(target=OBDWorker, args=(queue,portIndex,))
+def StartWorker(queue):
+    p = Process(target=OBDWorker, args=(queue,))
     p.start()
     return p
 
@@ -206,8 +203,8 @@ def Main():
     #socket.bind("tcp://*:5555")
     logger = TripLogger()
     wait_for_port()
-    portIndex = 0
-    worker = StartWorker(queue, portIndex)
+    worker = StartWorker(queue)
+
     #initialize the childs heartbeat
     last_heartbeat = time.time()
     restartTime = None #Keeps track of when restart should be attempted
@@ -218,6 +215,9 @@ def Main():
 
     # Initialize ZeroMQ
     zmq_publisher = InitializeZMQ()
+
+    # Start reply server for Java commands
+    reply_thread = StartReplyServer()
 
     try:
         while PROGRAM_ALIVE:
@@ -281,8 +281,7 @@ def Main():
             #Worker process restart logic
             if(restartTime != None and time.time() >= restartTime):
                 wait_for_port()
-                portIndex += 1
-                worker = StartWorker(queue, portIndex)
+                worker = StartWorker(queue)
 
                 restart_delay = min(restart_delay * 2, MAX_RESTART_DELAY)
                 last_heartbeat = time.time()
@@ -417,6 +416,66 @@ def InitializeZMQ(port=5555):
             "publisher": None,
             "enabled": False
         }
+
+def StartReplyServer():
+    
+    """
+    Start a Reply server in a separate thread to handle Java requests/commands
+    """
+
+    def reply_worker():
+        global PROGRAM_ALIVE
+
+        context = zmq.Context()
+        socket = context.socket(zmq.REP)
+        socket.bind("tcp://*:5556") # Different port than publisher
+        print("ZeroMQ Reply server started on port 5556")
+
+        while PROGRAM_ALIVE:
+            try:
+                # Set timeout so we can check PROGRAM_ALIVE preiodically
+                socket.setsockopt(zmq.RCVTIMEO, 1000) # 1 second timeout
+
+                # Wait for request from Java
+                request = socket.recv_string()
+                print(f"Received command from Java: {request}")
+
+                # Process request
+                if request == "SHUTDOWN":
+                    PROGRAM_ALIVE = False
+                    response = {"status": "ok", "message": "Shutting down..."}
+                    socket.send_string(json.dumps(response))
+                    print("Shutdown command received from Java")
+                    break
+
+                elif request == "PING":
+                    response = {"status": "ok", "message": "Python is alive"}
+                    socket.send_string(json.dumps(response))
+
+                elif request == "STATUS":
+                    response = {"status": "ok", "connected": True, "uptime": time.time()}
+                    socket.send_string(json.dumps(response))
+
+                else:
+                    response = {"status": "error", "message": "Unknown command"}
+                    socket.send_string(json.dumps(response))
+
+            except zmq.Again:
+                # Timeout - no message received, loop continues
+                continue
+            except Exception as e:
+                print(f"Reply server error: {e}")
+                break
+
+        socket.close()
+        context.term()
+        print("Reply server shut down")
+
+    # Start in background thread
+    thread = threading.Thread(target=reply_worker, daemon=True)
+    thread.start()
+    return thread
+
 
 def PublishVehicleData(zmq_publisher, cache_data):
 

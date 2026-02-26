@@ -8,6 +8,37 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 public class VehicleDataReceiver {
+
+    public static JsonObject data = new JsonObject();
+    public static double timestamp = -1;
+    public static double speed = 0;
+    public static boolean ConnectionEstablished = false;
+
+    public static double initialTime = -1;
+
+    public static void sendShutdownCommand() {
+      try (ZContext context = new ZContext()) {
+        ZMQ.Socket requester = context.createSocket(ZMQ.REQ);
+        requester.connect("tcp://localhost:5556");
+
+        // Set timeout to avoid hanging
+        requester.setReceiveTimeOut(2000); // 2 second timeout
+
+        // Send shutdown command
+        System.out.println("Sending shutdown command to Python...");
+        requester.send("SHUTDOWN".getBytes(ZMQ.CHARSET), 0);
+
+        // Wait for acknowledgment
+        String reply = requester.recvStr(0);
+        if (reply != null) {
+          System.out.println("Python response: " + reply);
+        }
+
+      } catch (Exception e) {
+        System.out.println("Could not send shutdown command: " + e.getMessage());
+
+      }
+    }
     
     public static void initDataReceiver() {
         // Create ZeroMQ context and subscriber socket
@@ -39,16 +70,25 @@ public class VehicleDataReceiver {
                     JsonObject vehicleData = gson.fromJson(jsonData, JsonObject.class);
                     
                     // Extract timestamp
-                    double timestamp = vehicleData.get("timestamp").getAsDouble();
+                    // THIS LINE HERE IS TEMPORARY AND SHOULD BE FIXED WHEN
+                    if (initialTime == -1) initialTime = vehicleData.get("timestamp").getAsDouble();
+                    timestamp = vehicleData.get("timestamp").getAsDouble() - initialTime;
                     
                     // Extract data object
-                    JsonObject data = vehicleData.getAsJsonObject("data");
+                    data = vehicleData.getAsJsonObject("data");
                     
                     // Display data
                     System.out.println("========== Vehicle Data ==========");
                     System.out.println("Timestamp: " + timestamp);
                     System.out.println("----------------------------------");
-                    
+
+                    if (data.entrySet().size() > 1 && !ConnectionEstablished) {
+                        ConnectionEstablished = true;
+                        Main.ConnectingPanel.setVisible(false);
+                        Main.ModeSwapPanel.setVisible(true);
+                        Main.setDrivingMode(false);
+                    }
+
                     // Iterate through all vehicle parameters
                     for (Map.Entry<String, JsonElement> entry : data.entrySet()) {
                         String commandName = entry.getKey();
@@ -63,18 +103,22 @@ public class VehicleDataReceiver {
                     System.out.println("==================================\n");
                     
                     // Process specific values (example)
-                    processVehicleData(data);
+                    processVehicleData();
+                    Main.updateUI();
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+          // Ensure shutdown is sent even on error
+          sendShutdownCommand();
         }
     }
     
     /**
      * Process vehicle data for specific conditions or alerts
      */
-    private static void processVehicleData(JsonObject data) {
+    private static void processVehicleData() {
         // Example: Check RPM
         if (data.has("RPM")) {
             JsonObject rpmData = data.getAsJsonObject("RPM");
@@ -86,7 +130,7 @@ public class VehicleDataReceiver {
                 double rpm = Double.parseDouble(numericPart);
                 
                 if (rpm > 5000) {
-                    System.out.println("⚠️  WARNING: High RPM detected: " + rpm);
+                    System.out.println("WARNING: High RPM detected: " + rpm);
                 }
             } catch (Exception e) {
                 // Handle parsing errors
@@ -100,10 +144,10 @@ public class VehicleDataReceiver {
             
             try {
                 String numericPart = speedValue.split(" ")[0];
-                double speed = Double.parseDouble(numericPart);
+                speed = Double.parseDouble(numericPart);
                 
                 if (speed > 120) {
-                    System.out.println("⚠️  WARNING: High speed detected: " + speed);
+                    System.out.println("WARNING: High speed detected: " + speed);
                 }
             } catch (Exception e) {
                 // Handle parsing errors
@@ -120,7 +164,7 @@ public class VehicleDataReceiver {
                 double temp = Double.parseDouble(numericPart);
                 
                 if (temp > 100) {
-                    System.out.println("ALERT: Engine overheating! Temp: " + temp + "C");
+                    System.out.println("ALERT: Engine overheating! Temp: " + temp + "degrees C");
                 }
             } catch (Exception e) {
                 // Handle parsing errors
