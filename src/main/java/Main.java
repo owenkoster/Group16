@@ -1,14 +1,22 @@
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
-import javax.swing.*;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 import javax.swing.plaf.FontUIResource;
 
-import org.jfree.chart.*;
-import org.jfree.chart.axis.*;
+import org.jfree.chart.ChartPanel;
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.DefaultXYItemRenderer;
 import org.jfree.chart.ui.RectangleInsets;
@@ -42,7 +50,7 @@ public class Main {
         Process pythonProcess;
         try {
             // Launch Python script
-            pythonProcess = PythonRunner.runPythonScript("src/main/python/OBDCommModule.py");
+            pythonProcess = PythonRunner.runPythonScript();
 
             // Java continues to run (you can communicate over ZeroMQ)
             // Wait for Python to finish if desired:
