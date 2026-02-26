@@ -47,7 +47,7 @@ def CacheCallback(response, OBDCACHE, lock):
 # ==============================
 # Worker Process
 # ==============================
-def OBDWorker(queue):
+def OBDWorker(queue, currentPort):
 
     global WORKER_ALIVE
     
@@ -58,16 +58,17 @@ def OBDWorker(queue):
     try:
         baud = 38400 #Set baud rate, this will eventually need to be done dynamically
         ports = obd.scan_serial() #scan for available ports
-
+        if (currentPort >= len(ports)):
+            currentPort = 0
+        print("Current Port" + str(currentPort))
         print("TEST PORTS" + str(ports))
         if not ports:
             queue.put(("error", "no_ports"))
             return
         #connect to python obd
         connection = obd.Async(
-            portstr=ports[0],
+            portstr=ports[currentPort],
             baudrate=baud,
-            protocol="6",
             fast=False
         
         )
@@ -161,8 +162,8 @@ def wait_for_port():
         time.sleep(.25)
 
 #helper function to start the worker process
-def StartWorker(queue):
-    p = Process(target=OBDWorker, args=(queue,))
+def StartWorker(queue,currentPort):
+    p = Process(target=OBDWorker, args=(queue,currentPort,))
     p.start()
     return p
 
@@ -203,7 +204,8 @@ def Main():
     #socket.bind("tcp://*:5555")
     logger = TripLogger()
     wait_for_port()
-    worker = StartWorker(queue)
+    currentPort = 0
+    worker = StartWorker(queue,currentPort)
 
     #initialize the childs heartbeat
     last_heartbeat = time.time()
@@ -280,8 +282,9 @@ def Main():
 
             #Worker process restart logic
             if(restartTime != None and time.time() >= restartTime):
+                currentPort += 1
                 wait_for_port()
-                worker = StartWorker(queue)
+                worker = StartWorker(queue, currentPort)
 
                 restart_delay = min(restart_delay * 2, MAX_RESTART_DELAY)
                 last_heartbeat = time.time()
