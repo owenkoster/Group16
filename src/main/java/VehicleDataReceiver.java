@@ -9,6 +9,13 @@ import com.google.gson.JsonObject;
 
 public class VehicleDataReceiver {
 
+    public static JsonObject data = new JsonObject();
+    public static double timestamp = -1;
+    public static double speed = 0;
+    public static boolean ConnectionEstablished = false;
+
+    public static double initialTime = -1;
+
     public static void sendShutdownCommand() {
       try (ZContext context = new ZContext()) {
         ZMQ.Socket requester = context.createSocket(ZMQ.REQ);
@@ -63,16 +70,25 @@ public class VehicleDataReceiver {
                     JsonObject vehicleData = gson.fromJson(jsonData, JsonObject.class);
                     
                     // Extract timestamp
-                    double timestamp = vehicleData.get("timestamp").getAsDouble();
+                    // THIS LINE HERE IS TEMPORARY AND SHOULD BE FIXED WHEN
+                    if (initialTime == -1) initialTime = vehicleData.get("timestamp").getAsDouble();
+                    timestamp = vehicleData.get("timestamp").getAsDouble() - initialTime;
                     
                     // Extract data object
-                    JsonObject data = vehicleData.getAsJsonObject("data");
+                    data = vehicleData.getAsJsonObject("data");
                     
                     // Display data
                     System.out.println("========== Vehicle Data ==========");
                     System.out.println("Timestamp: " + timestamp);
                     System.out.println("----------------------------------");
-                    
+
+                    if (data.entrySet().size() > 1 && !ConnectionEstablished) {
+                        ConnectionEstablished = true;
+                        Main.ConnectingPanel.setVisible(false);
+                        Main.ModeSwapPanel.setVisible(true);
+                        Main.setDrivingMode(false);
+                    }
+
                     // Iterate through all vehicle parameters
                     for (Map.Entry<String, JsonElement> entry : data.entrySet()) {
                         String commandName = entry.getKey();
@@ -87,7 +103,8 @@ public class VehicleDataReceiver {
                     System.out.println("==================================\n");
                     
                     // Process specific values (example)
-                    processVehicleData(data);
+                    processVehicleData();
+                    Main.updateUI();
                 }
             }
         } catch (Exception e) {
@@ -101,7 +118,7 @@ public class VehicleDataReceiver {
     /**
      * Process vehicle data for specific conditions or alerts
      */
-    private static void processVehicleData(JsonObject data) {
+    private static void processVehicleData() {
         // Example: Check RPM
         if (data.has("RPM")) {
             JsonObject rpmData = data.getAsJsonObject("RPM");
@@ -127,7 +144,7 @@ public class VehicleDataReceiver {
             
             try {
                 String numericPart = speedValue.split(" ")[0];
-                double speed = Double.parseDouble(numericPart);
+                speed = Double.parseDouble(numericPart);
                 
                 if (speed > 120) {
                     System.out.println("WARNING: High speed detected: " + speed);

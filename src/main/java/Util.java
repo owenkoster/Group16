@@ -15,26 +15,7 @@ public class Util {
     }
 
     public static void info(String message) {
-        JFrame popup = new JFrame();
-        popup.setTitle("Info");
-        popup.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        popup.setSize(message.length()*15,200);
-        popup.setLocationRelativeTo(null);
-        JLabel label = new JLabel(message);
-        label.setFont(SMALL_FONT);
-        JButton ok = new JButton("ok");
-        ok.setFont(SMALL_FONT);
-        ok.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                popup.dispose();
-            }
-        });
-        JPanel panel = new JPanel(new BorderLayout(10,15));
-        panel.add(wrap(label),BorderLayout.NORTH);
-        panel.add(wrap(ok),BorderLayout.CENTER);
-        popup.add(panel);
-        popup.setVisible(true);
+        JOptionPane.showMessageDialog(Main.window,message,"Info",JOptionPane.WARNING_MESSAGE);
     }
 
 }
