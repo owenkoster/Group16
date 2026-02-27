@@ -240,7 +240,7 @@ public class Main {
         allDataList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         allDataList.setCellRenderer(new MyCellRenderer());
         JScrollPane scrollPane = new JScrollPane(allDataList);
-        scrollPane.setPreferredSize(new Dimension(450,380));
+        scrollPane.setPreferredSize(new Dimension(500,380));
         StandardMode.add(scrollPane);
     }
 
