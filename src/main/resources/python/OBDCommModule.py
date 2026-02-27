@@ -42,7 +42,7 @@ def CacheCallback(response, OBDCACHE, lock):
             OBDCACHE[cmd_name]["unit"] = str(response.value.units)
         else:
             OBDCACHE[cmd_name]["value"] = str(response.value)
-            OBDCACHE[cmd_name]["unit"] = ""
+            OBDCACHE[cmd_name]["unit"] = "None"
 
 # ==============================
 # Worker Process
