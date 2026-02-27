@@ -21,6 +21,7 @@ INITIAL_RESTART_DELAY = 2
 MAX_RESTART_DELAY = 8
 STALL_TIMEOUT = 6
 NULL_RESPONSE_TIMEOUT = 2
+CURRENT_PORT = 0
 
 # def CacheCallback(response, OBDCACHE, lock):
 #     if response.is_null():
@@ -50,7 +51,8 @@ def CacheCallback(response, OBDCACHE, lock):
 def OBDWorker(queue, currentPort):
 
     global WORKER_ALIVE
-    
+    global CURRENT_PORT
+
     OBDCACHE = {}
     
     cache_lock = Lock() #Cache update lock to prevent race conditions
@@ -58,8 +60,8 @@ def OBDWorker(queue, currentPort):
     try:
         baud = 38400 #Set baud rate, this will eventually need to be done dynamically
         ports = obd.scan_serial() #scan for available ports
-        if (currentPort >= len(ports)):
-            currentPort = 0
+        if (CURRENT_PORT >= len(ports)):
+            CURRENT_PORT = 0
         print("Current Port" + str(currentPort))
         print("TEST PORTS" + str(ports))
         if not ports:
@@ -205,6 +207,8 @@ def Main():
     logger = TripLogger()
     wait_for_port()
     currentPort = 0
+    global CURRENT_PORT
+    currentPort = 0
     worker = StartWorker(queue,currentPort)
 
     #initialize the childs heartbeat
@@ -282,9 +286,9 @@ def Main():
 
             #Worker process restart logic
             if(restartTime != None and time.time() >= restartTime):
-                currentPort += 1
+                CURRENT_PORT += 1
                 wait_for_port()
-                worker = StartWorker(queue, currentPort)
+                worker = StartWorker(queue, CURRENT_PORT)
 
                 restart_delay = min(restart_delay * 2, MAX_RESTART_DELAY)
                 last_heartbeat = time.time()
