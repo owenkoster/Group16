@@ -3,6 +3,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Vector;
 
@@ -35,6 +36,7 @@ public class Main {
     static XYSeriesCollection dataset;
     static XYSeriesCollection seriesCollection;
     static double[][] currentData = new double[2][10];
+    public static Map<String,String> unitMap;
 
     // This would normally be like 1, but for testing higher values make more sense
     public static final double DRIVING_MODE_SPEED_THRESHOLD = 200;
@@ -42,6 +44,11 @@ public class Main {
     public static void setDrivingMode(boolean drivingMode) {
         DrivingMode.setVisible(drivingMode);
         StandardMode.setVisible(!drivingMode);
+    }
+
+    public static String unitOf(String s) {
+        if (unitMap.containsKey(s)) return unitMap.get(s);
+        return s;
     }
 
     public static void main(String[] args) {
@@ -58,6 +65,23 @@ public class Main {
             e.printStackTrace();
             return;
         }
+
+        //init units
+        unitMap = new HashMap<>();
+        unitMap.put("volt","V");
+        unitMap.put("second","s");
+        unitMap.put("milliampere","mA");
+        unitMap.put("percent","%");
+        unitMap.put("None","");
+        unitMap.put("degree_Celsius","°C");
+        unitMap.put("kilometer_per_hour","km/h");
+        unitMap.put("minute","min");
+        unitMap.put("kilopascal","kPa");
+        unitMap.put("gps","g/s");
+        unitMap.put("kilometer","km");
+        unitMap.put("revolutions_per_minute","rpm");
+        unitMap.put("degree","°");
+        unitMap.put("ratio","");
 
         //style
         try {
@@ -155,7 +179,7 @@ public class Main {
             dataset.addSeries(newSeries);
             allDataVector = new Vector<>();
             for (Map.Entry<String, JsonElement> entry : VehicleDataReceiver.data.entrySet()) {
-                System.out.println(entry.getValue().getAsJsonObject());
+                //System.out.println(entry.getValue().getAsJsonObject());
                 String value = "";
                 try {
                     value = ""+Math.round(entry.getValue().getAsJsonObject().get("value").getAsDouble());
@@ -163,7 +187,8 @@ public class Main {
                     value = entry.getValue().getAsJsonObject().get("value").getAsString();
                 }
                 if (!entry.getValue().getAsJsonObject().get("value").getAsString().equals("None")) {
-                    JLabel label = new JLabel(entry.getKey()+": "+value);
+                    JLabel label = new JLabel(entry.getKey()+": "+value
+                            +unitOf(entry.getValue().getAsJsonObject().get("unit").getAsString()));
                     label.setFont(Util.SMALL_FONT);
                     allDataVector.add(label);
                 }
@@ -184,7 +209,7 @@ public class Main {
         plot.setDataset(dataset);
         plot.setAxisOffset(new RectangleInsets(10,10,10,10));
         plot.setDomainAxis(new NumberAxis("Time (seconds)"));
-        plot.setRangeAxis(new NumberAxis("Speed (MPH)"));
+        plot.setRangeAxis(new NumberAxis("Speed (km/h)"));
         DefaultXYItemRenderer renderer = new DefaultXYItemRenderer();
         renderer.setLegendTextFont(10,Util.SMALL_FONT);
         plot.setRenderer(renderer);
