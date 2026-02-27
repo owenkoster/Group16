@@ -74,7 +74,6 @@ public class Main {
         window = new JFrame();
         UIManager.put("OptionPane.font",new FontUIResource(Util.SMALL_FONT));
         UIManager.put("OptionPane.messageFont",new FontUIResource(Util.SMALL_FONT));
-        //UIManager.put("OptionPane.buttonFont",new FontUIResource(Util.SMALL_FONT));
         UIManager.put("Button.font",new FontUIResource(Util.SMALL_FONT));
         window.setTitle("OBD-2GO!");
         window.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
@@ -156,14 +155,18 @@ public class Main {
             dataset.addSeries(newSeries);
             allDataVector = new Vector<>();
             for (Map.Entry<String, JsonElement> entry : VehicleDataReceiver.data.entrySet()) {
+                System.out.println(entry.getValue().getAsJsonObject());
+                String value = "";
                 try {
-                    entry.getValue().getAsJsonObject().get("value").getAsDouble();
+                    value = ""+Math.round(entry.getValue().getAsJsonObject().get("value").getAsDouble());
                 } catch (NumberFormatException e) {
-
+                    value = entry.getValue().getAsJsonObject().get("value").getAsString();
                 }
-                JLabel label = new JLabel(entry.getKey()+": "+entry.getValue().getAsJsonObject().get("value").toString());
-                label.setFont(Util.SMALL_FONT);
-                allDataVector.add(label);
+                if (!entry.getValue().getAsJsonObject().get("value").getAsString().equals("None")) {
+                    JLabel label = new JLabel(entry.getKey()+": "+value);
+                    label.setFont(Util.SMALL_FONT);
+                    allDataVector.add(label);
+                }
             }
             allDataList.setListData(allDataVector);
         });
