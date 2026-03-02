@@ -40,9 +40,9 @@ Download the most recent version of Python. On windows get it from the Microsoft
 Open PowerShell or an equivalent command-line terminal
 ##### Step 3:
 Run the commands:
-pip install pyyaml
-pip install python-daemon
-pip install obd
+ - pip install pyyaml
+ - pip install python-daemon
+ - pip install obd
 ##### Step 4:
 On a Windows machine, the emulator requires com0com to simulate a COM port. 
 Download: https://sourceforge.net/projects/com0com/ 
