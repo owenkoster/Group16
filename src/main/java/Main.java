@@ -72,23 +72,8 @@ public class Main {
             e.printStackTrace();
             return;
         }
-JButton ImportLogButton = new JButton("Import Log");
-        ImportLogButton.setFont(Util.SMALL_FONT);
-        ImportLogButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                JFileChooser fileChooser = new JFileChooser("logs/");
-                fileChooser.setFileFilter(new FileNameExtensionFilter("CSV Log Files", "csv"));
-                
-                int result = fileChooser.showOpenDialog(window);
-                if (result == JFileChooser.APPROVE_OPTION) {
-                    File selectedFile = fileChooser.getSelectedFile();
-                    restartPythonBackend(selectedFile.getAbsolutePath());
-                }
-            }
-        });
 
-        
+
 
         //init units
         unitMap = new HashMap<>();
@@ -136,6 +121,22 @@ JButton ImportLogButton = new JButton("Import Log");
                     //pythonProcess.destroy();
                     VehicleDataReceiver.sendShutdownCommand();
                     System.exit(0);
+                }
+            }
+        });
+
+        JButton ImportLogButton = new JButton("Import Log");
+        ImportLogButton.setFont(Util.SMALL_FONT);
+        ImportLogButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                JFileChooser fileChooser = new JFileChooser("logs/");
+                fileChooser.setFileFilter(new FileNameExtensionFilter("CSV Log Files", "csv"));
+
+                int result = fileChooser.showOpenDialog(window);
+                if (result == JFileChooser.APPROVE_OPTION) {
+                    File selectedFile = fileChooser.getSelectedFile();
+                    restartPythonBackend(selectedFile.getAbsolutePath());
                 }
             }
         });
@@ -210,7 +211,8 @@ JButton ImportLogButton = new JButton("Import Log");
         window.setVisible(true);
         VehicleDataReceiver.initDataReceiver();
     }
-public static void restartPythonBackend(String playbackFile) {
+
+    public static void restartPythonBackend(String playbackFile) {
         new Thread(() -> {
             try {
                 System.out.println("Restarting backend...");
