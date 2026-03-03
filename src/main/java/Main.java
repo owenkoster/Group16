@@ -73,16 +73,16 @@ public class Main {
         unitMap = new HashMap<>();
         unitMap.put("volt","V");
         unitMap.put("second","s");
-        unitMap.put("milliampere","mA");
+        unitMap.put("milliampere"," mA");
         unitMap.put("percent","%");
         unitMap.put("None","");
         unitMap.put("degree_Celsius","°C");
-        unitMap.put("kilometer_per_hour","km/h");
-        unitMap.put("minute","min");
-        unitMap.put("kilopascal","kPa");
-        unitMap.put("gps","g/s");
-        unitMap.put("kilometer","km");
-        unitMap.put("revolutions_per_minute","rpm");
+        unitMap.put("kilometer_per_hour"," km/h");
+        unitMap.put("minute"," min");
+        unitMap.put("kilopascal"," kPa");
+        unitMap.put("gps"," g/s");
+        unitMap.put("kilometer"," km");
+        unitMap.put("revolutions_per_minute"," rpm");
         unitMap.put("degree","°");
         unitMap.put("ratio","");
 
