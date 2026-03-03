@@ -23,12 +23,14 @@ Extract the ZIP file
 
 #### How to run the software:
 ##### Step 1:
-Open PowerShell or an equivalent command-line terminal
+Connect to the vehicle or the emulator
 ##### Step 2:
-Navigate to where the project was extracted to, for example: "cd C:/MyFolder/"
+Open PowerShell or an equivalent command-line terminal
 ##### Step 3:
+Navigate to where the project was extracted to, for example: "cd C:/MyFolder/"
+##### Step 4:
 Run the command: java -jar VehicleApp.jar
-##### Step 4: 
+##### Step 5: 
 Wait for the software to connect to the vehicle
 
 #### How to install the emulator to test the software:
