@@ -23,22 +23,25 @@ import org.jfree.data.xy.XYSeriesCollection;
 public class Main {
 
     static JFrame window;
-
     static JPanel MainPanel;
-    static JPanel DrivingMode;
-    static JPanel StandardMode;
     static JPanel ModeSwapPanel;
     static JPanel ConnectingPanel;
 
+    //standard mode
+    static JPanel StandardMode;
     static Vector<JLabel> allDataVector = new Vector<>();
     static JList<JLabel> allDataList = new JList<>();
 
+    //driving mode
+    static JPanel DrivingMode;
+    static JPanel DTCPanel;
+    static JLabel DTCLabel;
+    static JList<JLabel> DTCList = new JList<>();
     static XYSeriesCollection dataset;
-    static XYSeriesCollection seriesCollection;
-    static double[][] currentData = new double[2][10];
+
     public static Map<String,String> unitMap;
 
-    // This would normally be like 1, but for testing higher values make more sense
+    // This would normally be like 1, but for testing--higher values make more sense
     public static final double DRIVING_MODE_SPEED_THRESHOLD = 200;
 
     public static void setDrivingMode(boolean drivingMode) {
@@ -195,7 +198,13 @@ public class Main {
             }
             allDataList.setListData(allDataVector);
         });
-        System.out.println(VehicleDataReceiver.data.get("GET_DTC"));
+        DTCLabel.setText("No DTCs");
+        if (VehicleDataReceiver.data.has("GET_DTC")) {
+            if (!VehicleDataReceiver.data.get("GET_DTC").getAsJsonObject().get("value").getAsString().equals("None")) {
+                DTCLabel.setText(VehicleDataReceiver.data.get("GET_DTC").getAsJsonObject().get("value").getAsString());
+            }
+        }
+
         if (VehicleDataReceiver.speed > DRIVING_MODE_SPEED_THRESHOLD) {
             setDrivingMode(true);
         }
@@ -228,9 +237,11 @@ public class Main {
         DrivingMode.add(graph,BorderLayout.WEST);
 
         JPanel DrivingModeRightPanel = new JPanel();
-        JLabel DTCLabel = new JLabel("No Trouble Codes");
+        DTCLabel = new JLabel("No Trouble Codes");
         DTCLabel.setFont(Util.SMALL_FONT);
-        DrivingModeRightPanel.add(DTCLabel,BorderLayout.NORTH);
+        DTCPanel = new JPanel();
+        DTCPanel.add(DTCLabel);
+        DrivingModeRightPanel.add(DTCPanel,BorderLayout.NORTH);
         DrivingMode.add(DrivingModeRightPanel,BorderLayout.EAST);
     }
 
