@@ -61,4 +61,4 @@ Once the emulator terminal is open, type in scenario to switch the mode to car
 ##### Step 6:
 The emulator is ready to be used to test the software
 ### 4. Use cases functional
-Currently, the user can view all available sensor data in standard mode. The user can also read any trouble codes found while in driving mode. The log system works and will output CSV files with logged vehicle data into the logs folder in the same directory as the .jar file. The user can freely switch between driving mode and standard mode. 
+Currently, the user can view all available sensor data in standard mode. The user can also read any trouble codes found while in driving mode and can view a graph of the current vehicle speed. The log system works and will output CSV files with logged vehicle data into the logs folder in the same directory as the .jar file. The user can freely switch between driving mode and standard mode. 
