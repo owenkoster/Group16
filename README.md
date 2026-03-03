@@ -1,15 +1,13 @@
-# A new way to monitor your vehicle, OBD-2GO! (subject to change) - Team 16
+# A new way to monitor your vehicle, OBD-2GO! - Team 16
 ### 1. Team info:
 Owen Koster,
 Peyton DuPont
 Tiernan Flanagan-Caldwell
 Silas Jones
-   
-   The main method of communication is Discord
-   
+
 ### 2. Product description
 
-A notorious source of headache for drivers has always been the dreaded check engine light. When it comes on, it leaves you with the anxiety of knowing something might be terribly wrong with your vehicle – Or it could be nothing. The OBD-2GO aims to make this system more transparent so drivers don’t have to worry about what might be wrong with their vehicle. The OBD-2GO will be a system embedded into your vehicle that will actively monitor and warn you of issues with your vehicle in a more detailed manner than a simple check engine light. It will also enable you to monitor and record vehicle parameters while driving, so that you can know what shows signs of failure before the problem becomes much more expensive.
+A notorious source of headache for drivers has always been the dreaded check engine light. When it comes on, it leaves you with the anxiety of knowing something might be terribly wrong with your vehicle – Or it could be nothing. The OBD-2GO aims to make this system more transparent so drivers don’t have to worry about what might be wrong with their vehicle. The OBD-2GO will be a system embedded into your vehicle that will actively monitor and warn you of issues with your vehicle in a more detailed manner than a simple check engine light. It will also enable you to monitor and record vehicle parameters while driving, so that you can know what shows signs of failure before the problem becomes much more expensive. Also supports exporting and importing logs of your drives to help pinpoint your issues.
 
 ### 3. How to run the software
 
@@ -44,7 +42,7 @@ Run the commands:
  - pip install python-daemon
  - pip install obd
 ##### Step 4:
-On a Windows machine, the emulator requires com0com to simulate a COM port. 
+On a Windows machine, the emulator requires com0com to simulate a COM port. Skip to step 5 if on Mac
 Download: https://sourceforge.net/projects/com0com/ 
 Follow the installation instructions for com0com
 Next, open Device Manager, click on: com0com - serial port emulators
@@ -57,7 +55,7 @@ Set up a Virtual port pair, the only options that should be ticked are emulate b
 One port must be named COM3, and the other can be named COM#, where # is any number from 1-9, not including 3
 Click apply
 ##### Step 5:
-finally download the latest release of the emulator from: https://github.com/Ircama/ELM327-emulator 
+Finally download the latest release of the emulator from: https://github.com/Ircama/ELM327-emulator 
 Unzip the folder and double-click the .exe
 Once the emulator terminal is open, type in scenario to switch the mode to car
 ##### Step 6:
