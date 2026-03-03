@@ -13,7 +13,6 @@ public class VehicleDataReceiver {
     public static double timestamp = -1;
     public static double speed = 0;
     public static boolean ConnectionEstablished = false;
-
     public static double initialTime = -1;
 
     public static void sendShutdownCommand() {
@@ -75,7 +74,10 @@ public class VehicleDataReceiver {
                     timestamp = vehicleData.get("timestamp").getAsDouble() - initialTime;
 
                     // Extract data object
-                    data = vehicleData.getAsJsonObject("data");
+                    JsonObject incomingData = vehicleData.getAsJsonObject("data");
+                    for (Map.Entry<String, JsonElement> entry : incomingData.entrySet()) {
+                        data.add(entry.getKey(), entry.getValue());
+                    }
 
                     // Display data
                     System.out.println("========== Vehicle Data ==========");
@@ -87,6 +89,8 @@ public class VehicleDataReceiver {
                         Main.ConnectingPanel.setVisible(false);
                         Main.ModeSwapPanel.setVisible(true);
                         Main.setDrivingMode(false);
+                        Main.window.validate();
+                        Main.window.repaint();
                     }
 
                     // Iterate through all vehicle parameters
