@@ -10,6 +10,7 @@ import zmq
 import json
 import csv
 import os
+import glob
 from datetime import datetime
 
 #Program alive variables
@@ -48,31 +49,20 @@ def CacheCallback(response, OBDCACHE, lock):
 # ==============================
 # Worker Process
 # ==============================
-def OBDWorker(queue, currentPort):
-
+def OBDWorker(queue, port_name):
     global WORKER_ALIVE
     global CURRENT_PORT
-
     OBDCACHE = {}
-    
     cache_lock = Lock() #Cache update lock to prevent race conditions
 
     try:
-        baud = 38400 #Set baud rate, this will eventually need to be done dynamically
-        ports = obd.scan_serial() #scan for available ports
-        if (CURRENT_PORT >= len(ports)):
-            CURRENT_PORT = 0
-        print("Current Port" + str(currentPort))
-        print("TEST PORTS" + str(ports))
-        if not ports:
-            queue.put(("error", "no_ports"))
-            return
-        #connect to python obd
+        print(f"Worker connecting to port: {port_name}")
         connection = obd.Async(
-            portstr=ports[currentPort],
-            baudrate=baud,
-            fast=False
-        
+            baudrate = 38400, #Set baud rate, this will eventually need to be done dynamically
+            portstr = port_name,
+            protocol = "6",
+            fast = False,
+            timeout = 40,
         )
 
         #connection error
@@ -154,21 +144,67 @@ def OBDWorker(queue, currentPort):
 
 
 #Scan for available com ports
-def wait_for_port():
+# def wait_for_port():
+#     while True:
+#         ports = obd.scan_serial()
+#         #ports = ["/dev/ttys006"]
+#         if ports:
+#             return
+#         print("Waiting for emulator...")
+#         time.sleep(.25)
+
+def scan_emulator_ports():
+    candidates = glob.glob("/dev/ttys*") + glob.glob("/dev/pts/*")
+    candidates = [p for p in candidates if "Bluetooth" not in p]
+
+    for port in candidates:
+        try:
+            ser = serial.Serial(port, 38400, timeout=1, write_timeout=1)
+            ser.write(b"ATZ\r")
+            response = ser.read(1024)
+            ser.close()
+
+            if len(response) > 0 and b"ELM" in response:
+                return [port]
+        except (OSError, serial.SerialException):
+            pass
+    return []
+
+def get_port_strategy():
+    if "--port" in sys.argv:
+        port_index = sys.argv.index("--port") + 1
+        if port_index < len(sys.argv):
+            print(f"[Manual] Using port from command line: {sys.argv[port_index]}")
+            return sys.argv[port_index]
+
+    print("Scanning for vehicle/emulator connection...")
+    is_windows = sys.platform.startswith('win')
     while True:
-        ports = obd.scan_serial()
-        #ports = ["/dev/ttys006"]
-        if ports:
-            return
-        print("Waiting for emulator...")
-        time.sleep(.25)
+        if is_windows:
+            ports = obd.scan_serial()
+            if ports:
+                print(f"[Auto] Found Windows adapter: {ports[0]}")
+                return ports[0]
+        else:
+            ports = obd.scan_serial()
+            ports = [p for p in ports if "debug-console" not in p]
+            if ports:
+                print(f"[Auto] Found Mac/Linux adapter: {ports[0]}")
+                return ports[0]
+                
+            ports = scan_emulator_ports()
+            if ports:
+                print(f"[Auto] Found Mac/Linux emulator: {ports[0]}")
+                return ports[0]
+            
+        print("Waiting for connection... Retrying in 2s.")
+        time.sleep(2)
 
 #helper function to start the worker process
-def StartWorker(queue,currentPort):
-    p = Process(target=OBDWorker, args=(queue,currentPort,))
+def StartWorker(queue,port_name):
+    p = Process(target=OBDWorker, args=(queue,port_name,))
     p.start()
     return p
-
 
 class TripLogger:
     def __init__(self, log_dir="logs"):
@@ -199,17 +235,72 @@ class TripLogger:
         if self.file:
             self.file.close()
 
+
+def PlaybackLog(filepath, zmq_publisher):
+    #Reads CSV file log
+    print(f"\n[PLAYBACK MODE] Starting playback from: {filepath}")
+    if not os.path.exists(filepath):
+        print(f"Error: Cannot find log file at {filepath}")
+        return
+    try:
+        # Open CSV and read rows
+        with open(filepath, mode='r') as file:
+            reader = csv.DictReader(file)
+            prev_timestamp = None
+            
+            for row in reader:
+                #Get current timestamp from CSV
+                try:
+                    current_timestamp = float(row["Timestamp_Unix"])
+                except ValueError:
+                    continue
+
+                if prev_timestamp is not None:
+                    time_diff = current_timestamp - prev_timestamp
+                    if time_diff > 0:
+                        time.sleep(time_diff)
+                
+                prev_timestamp = current_timestamp
+                fake_cache = {
+                    row["PID"]: {
+                        "value": row["Value"],
+                        "unit": row["Unit"],
+                        "lastUpdate": current_timestamp
+                    }
+                }
+                
+                PublishVehicleData(zmq_publisher, fake_cache)
+                
+                print(f" > Playback sent: {row['PID']} : {row['Value']} {row['Unit']}")
+
+        print("\n[PLAYBACK MODE] Replay finished.")
+        
+    except Exception as e:
+        print(f"Playback failed: {e}")
+
 def Main():
-    queue = Queue()
     #context = zmq.Context() ZMQ communication already handled by zmq_publisher
     #socket = context.socket(zmq.PUB)
     #socket.bind("tcp://*:5555")
+    # Initialize ZeroMQ
+    zmq_publisher = InitializeZMQ()
+    # Start reply server for Java commands
+    reply_thread = StartReplyServer()
+
+    if "--playback" in sys.argv:
+        file_index = sys.argv.index("--playback") + 1
+        if file_index < len(sys.argv):
+            PlaybackLog(sys.argv[file_index], zmq_publisher)
+            CleanupZMQ(zmq_publisher)
+            return
+        else:
+            print("Error: Provide a CSV file path after --playback")
+            return
+    queue = Queue()
     logger = TripLogger()
-    wait_for_port()
-    currentPort = 0
-    global CURRENT_PORT
-    currentPort = 0
-    worker = StartWorker(queue,currentPort)
+    active_port = get_port_strategy()
+    worker = StartWorker(queue,active_port)
+
 
     #initialize the childs heartbeat
     last_heartbeat = time.time()
@@ -218,12 +309,6 @@ def Main():
     
     #Local current cache of the vehicle data
     CURRENT_CACHE = {}
-
-    # Initialize ZeroMQ
-    zmq_publisher = InitializeZMQ()
-
-    # Start reply server for Java commands
-    reply_thread = StartReplyServer()
 
     try:
         while PROGRAM_ALIVE:
@@ -286,9 +371,8 @@ def Main():
 
             #Worker process restart logic
             if(restartTime != None and time.time() >= restartTime):
-                CURRENT_PORT += 1
-                wait_for_port()
-                worker = StartWorker(queue, CURRENT_PORT)
+                active_port = get_port_strategy()
+                worker = StartWorker(queue, active_port)
 
                 restart_delay = min(restart_delay * 2, MAX_RESTART_DELAY)
                 last_heartbeat = time.time()

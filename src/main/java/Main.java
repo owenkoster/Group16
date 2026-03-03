@@ -9,6 +9,8 @@ import java.util.Vector;
 
 import javax.swing.*;
 import javax.swing.plaf.FontUIResource;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import java.io.File;
 
 import com.google.gson.JsonElement;
 import org.jfree.chart.*;
@@ -26,6 +28,7 @@ public class Main {
     static JPanel MainPanel;
     static JPanel ModeSwapPanel;
     static JPanel ConnectingPanel;
+    static Process pythonProcess;
 
     //standard mode
     static JPanel StandardMode;
@@ -38,7 +41,9 @@ public class Main {
     static JLabel DTCLabel;
     static JList<JLabel> DTCList = new JList<>();
     static XYSeriesCollection dataset;
-
+    static XYPlot plot;
+    static XYSeriesCollection seriesCollection;
+    static double[][] currentData = new double[2][10];
     public static Map<String,String> unitMap;
 
     // This would normally be like 1, but for testing--higher values make more sense
@@ -55,7 +60,6 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        Process pythonProcess;
         try {
             // Launch Python script
             pythonProcess = PythonRunner.runPythonScript();
@@ -68,6 +72,23 @@ public class Main {
             e.printStackTrace();
             return;
         }
+JButton ImportLogButton = new JButton("Import Log");
+        ImportLogButton.setFont(Util.SMALL_FONT);
+        ImportLogButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                JFileChooser fileChooser = new JFileChooser("logs/");
+                fileChooser.setFileFilter(new FileNameExtensionFilter("CSV Log Files", "csv"));
+                
+                int result = fileChooser.showOpenDialog(window);
+                if (result == JFileChooser.APPROVE_OPTION) {
+                    File selectedFile = fileChooser.getSelectedFile();
+                    restartPythonBackend(selectedFile.getAbsolutePath());
+                }
+            }
+        });
+
+        
 
         //init units
         unitMap = new HashMap<>();
@@ -145,11 +166,31 @@ public class Main {
         ModeSwapPanel = new JPanel(new BorderLayout(20,20));
         ModeSwapPanel.add(DrivingModeButton,BorderLayout.WEST);
         ModeSwapPanel.add(StandardModeButton,BorderLayout.EAST);
+        ModeSwapPanel.add(ImportLogButton, BorderLayout.CENTER);
 
-        ConnectingPanel = new JPanel();
+        ConnectingPanel = new JPanel(new BorderLayout(10, 10));
         JLabel connectLabel = new JLabel("Connecting to your vehicle...");
         connectLabel.setFont(Util.SMALL_FONT);
         ConnectingPanel.add(connectLabel);
+
+        JButton connectImportButton = new JButton("Import Log");
+        connectImportButton.setFont(Util.SMALL_FONT);
+        connectImportButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                JFileChooser fileChooser = new JFileChooser("logs/");
+                fileChooser.setFileFilter(new FileNameExtensionFilter("CSV Log Files", "csv"));
+
+                int result = fileChooser.showOpenDialog(window);
+                if (result == JFileChooser.APPROVE_OPTION) {
+                    File selectedFile = fileChooser.getSelectedFile();
+                    restartPythonBackend(selectedFile.getAbsolutePath());
+                }
+            }
+        });
+        JPanel bottomPanel = new JPanel(new BorderLayout());
+        bottomPanel.add(connectImportButton, BorderLayout.CENTER);
+        ConnectingPanel.add(bottomPanel, BorderLayout.SOUTH);
 
         initDrivingMode();
         initStandardMode();
@@ -168,6 +209,37 @@ public class Main {
         StandardMode.setVisible(false);
         window.setVisible(true);
         VehicleDataReceiver.initDataReceiver();
+    }
+public static void restartPythonBackend(String playbackFile) {
+        new Thread(() -> {
+            try {
+                System.out.println("Restarting backend...");
+                
+                // Kill existing process
+                if (pythonProcess != null && pythonProcess.isAlive()) {
+                    VehicleDataReceiver.sendShutdownCommand();
+                    Thread.sleep(500);
+                    pythonProcess.destroy();
+                    pythonProcess.waitFor();
+                }
+
+                // Start new process with arguments
+                if (playbackFile != null) {
+                    System.out.println("Launching Playback: " + playbackFile);
+                    pythonProcess = PythonRunner.runPythonScript("--playback", playbackFile);
+                } else {
+                    System.out.println("Launching Live Mode");
+                    pythonProcess = PythonRunner.runPythonScript();
+                }
+                
+                VehicleDataReceiver.ConnectionEstablished = false;
+                VehicleDataReceiver.initialTime = -1;
+                
+            } catch (Exception e) {
+                e.printStackTrace();
+                Util.info("Failed to restart backend: " + e.getMessage());
+            }
+        }).start();
     }
 
     public static void updateUI() {
@@ -212,11 +284,14 @@ public class Main {
 
     public static void initDrivingMode() {
         DrivingMode = new JPanel(new BorderLayout(10,10));
-        XYPlot plot = new XYPlot();
+        // Dataset
         dataset = new XYSeriesCollection();
         dataset.addSeries(new XYSeries("SPEED"));
+        // Setup
+        plot = new XYPlot();
         plot.setDataset(dataset);
         plot.setAxisOffset(new RectangleInsets(10,10,10,10));
+        
         plot.setDomainAxis(new NumberAxis("Time (seconds)"));
         plot.setRangeAxis(new NumberAxis("Speed (km/h)"));
         DefaultXYItemRenderer renderer = new DefaultXYItemRenderer();
@@ -229,9 +304,11 @@ public class Main {
         plot.getRangeAxis().setLabelFont(Util.SMALL_FONT);
         plot.getRangeAxis().setTickLabelFont(Util.SMALL_FONT);
         plot.setFixedLegendItems(null);
+
         JFreeChart chart = new JFreeChart(plot);
         chart.setTitle("Speed (last 60 seconds)");
         chart.removeLegend();
+
         ChartPanel graph = new ChartPanel(chart);
         graph.setPreferredSize(new Dimension(400,300));
         DrivingMode.add(graph,BorderLayout.WEST);

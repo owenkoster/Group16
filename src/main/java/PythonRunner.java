@@ -5,10 +5,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class PythonRunner {
 
-    public static Process runPythonScript() throws IOException, InterruptedException {
+    public static Process runPythonScript(String... args) throws IOException, InterruptedException {
 
         // Create temp working directory
         Path tempDir = Files.createTempDirectory("VehicleApp");
@@ -51,7 +54,15 @@ public class PythonRunner {
 
         // Run Python script
         System.out.println("Starting Python script...");
-        ProcessBuilder pbRun = new ProcessBuilder(pythonExec, scriptPath.toString());
+        List<String> command = new ArrayList<>();
+        command.add(pythonExec);
+        command.add(scriptPath.toString());
+        
+        if (args != null) {
+            Collections.addAll(command, args);
+            }
+        
+        ProcessBuilder pbRun = new ProcessBuilder(command);
         pbRun.inheritIO();
         return pbRun.start();
     }
