@@ -1,0 +1,10 @@
+version: "3.9"
+
+services:
+  elm327-emulator:
+    build: .
+    ports:
+      - "35000:35000"
+    tty: true
+    stdin_open: true
+    restart: unless-stopped
