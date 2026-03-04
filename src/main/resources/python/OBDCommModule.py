@@ -11,6 +11,7 @@ import json
 import csv
 import os
 import glob
+import socket
 from datetime import datetime
 
 #Program alive variables
@@ -59,7 +60,7 @@ def OBDWorker(queue, port_name):
         print(f"Worker connecting to port: {port_name}")
         connection = obd.Async(
             baudrate = 38400, #Set baud rate, this will eventually need to be done dynamically
-            portstr = "socket://localhost:35000",#port_name,
+            portstr = port_name,
             protocol = "6",
             fast = False,
             timeout = 40,
@@ -170,17 +171,49 @@ def scan_emulator_ports():
             pass
     return []
 
+def wait_for_tcp_socket(host="localhost", port=35000, retries=10, delay=1):
+    """
+    Wait until a TCP socket is open and accepting connections.
+    Returns True if successful, False if socket never opened.
+    """
+    for i in range(retries):
+        try:
+            with socket.create_connection((host, port), timeout=1):
+                print(f"[OK] TCP socket {host}:{port} is open.")
+                return True
+        except (ConnectionRefusedError, OSError):
+            print(f"[WAIT] TCP socket {host}:{port} not ready, retry {i+1}/{retries}...")
+            time.sleep(delay)
+    print(f"[ERROR] TCP socket {host}:{port} unavailable.")
+    return False
+
 def get_port_strategy():
+
+
     global CURRENT_PORT
+    global PROGRAM_ALIVE
+    #manually specify the connection port
     if "--port" in sys.argv:
         port_index = sys.argv.index("--port") + 1
         if port_index < len(sys.argv):
             print(f"[Manual] Using port from command line: {sys.argv[port_index]}")
             return sys.argv[port_index]
+    #attempts to connect to the vehicle/ emulator using multiple methods to support our docker container and a
+    #real vehicle
+    while PROGRAM_ALIVE:
+        #scans for a emulator connection on local host over the network. this connects with the docker container
+        print("Scanning for emulator connection...")
+        host = "localhost"
+        port = 35000
+        #checks that the socket exists
+        if wait_for_tcp_socket(host, port, retries=3, delay=1):
+            port_name = f"socket://{host}:{port}"
+            print(f"[Auto] Using emulator: {port_name}")
+            return port_name
 
-    print("Scanning for vehicle/emulator connection...")
-    is_windows = sys.platform.startswith('win')
-    while True:
+        #scans for a connection with a vehicle over COM ports on windows
+        print("Scanning for vehicle connection...")
+        is_windows = sys.platform.startswith('win')
         if is_windows:
             ports = obd.scan_serial()
             if CURRENT_PORT >= len(ports):
@@ -190,6 +223,9 @@ def get_port_strategy():
             if ports:
                 print(f"[Auto] Found Windows adapter: {ports[CURRENT_PORT]}")
                 return ports[CURRENT_PORT]
+            print("[WINDOWS] No Connection to COM ports")
+            
+        #scans for ports on mac and linux
         else:
             ports = obd.scan_serial()
             ports = [p for p in ports if "debug-console" not in p]
@@ -202,6 +238,8 @@ def get_port_strategy():
                 print(f"[Auto] Found Mac/Linux emulator: {ports[CURRENT_PORT]}")
                 return ports[CURRENT_PORT]
             
+            print("[MAC/LINUX] No Connection to COM ports")   
+
         print("Waiting for connection... Retrying in 2s.")
         time.sleep(2)
 
