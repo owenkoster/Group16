@@ -171,6 +171,7 @@ def scan_emulator_ports():
     return []
 
 def get_port_strategy():
+    global CURRENT_PORT
     if "--port" in sys.argv:
         port_index = sys.argv.index("--port") + 1
         if port_index < len(sys.argv):
@@ -182,20 +183,24 @@ def get_port_strategy():
     while True:
         if is_windows:
             ports = obd.scan_serial()
+            if CURRENT_PORT >= len(ports):
+                CURRENT_PORT = 0
+            else:
+                CURRENT_PORT = CURRENT_PORT+1
             if ports:
-                print(f"[Auto] Found Windows adapter: {ports[0]}")
-                return ports[0]
+                print(f"[Auto] Found Windows adapter: {ports[CURRENT_PORT]}")
+                return ports[CURRENT_PORT]
         else:
             ports = obd.scan_serial()
             ports = [p for p in ports if "debug-console" not in p]
             if ports:
-                print(f"[Auto] Found Mac/Linux adapter: {ports[0]}")
-                return ports[0]
+                print(f"[Auto] Found Mac/Linux adapter: {ports[CURRENT_PORT]}")
+                return ports[CURRENT_PORT]
                 
             ports = scan_emulator_ports()
             if ports:
-                print(f"[Auto] Found Mac/Linux emulator: {ports[0]}")
-                return ports[0]
+                print(f"[Auto] Found Mac/Linux emulator: {ports[CURRENT_PORT]}")
+                return ports[CURRENT_PORT]
             
         print("Waiting for connection... Retrying in 2s.")
         time.sleep(2)
@@ -300,7 +305,6 @@ def Main():
     logger = TripLogger()
     active_port = get_port_strategy()
     worker = StartWorker(queue,active_port)
-
 
     #initialize the childs heartbeat
     last_heartbeat = time.time()
