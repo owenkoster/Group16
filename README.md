@@ -44,7 +44,8 @@ Run the commands:
  - pip install python-daemon
  - pip install obd
 ##### Step 4:
-On a Windows machine, the emulator requires com0com to simulate a COM port. Skip to step 5 if on Mac
+On a Windows machine, the emulator requires com0com to simulate a COM port. 
+On a Mac com0com is unnecessary, skip to step 5 if on Mac
 Download: https://sourceforge.net/projects/com0com/ 
 Follow the installation instructions for com0com
 Next, open Device Manager, click on: com0com - serial port emulators
@@ -61,6 +62,7 @@ Click apply
 ##### Step 5:
 Finally, download the latest release of the emulator from: https://github.com/Ircama/ELM327-emulator. 
 Unzip the folder and double-click the .exe
+If using the emulator in a terminal, try using a command like 'elm -s car'
 Once the emulator terminal is open, type in scenario to switch the mode to car
 ##### Step 6:
 The emulator is ready to be used to test the software
