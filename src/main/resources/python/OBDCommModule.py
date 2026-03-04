@@ -59,7 +59,7 @@ def OBDWorker(queue, port_name):
         print(f"Worker connecting to port: {port_name}")
         connection = obd.Async(
             baudrate = 38400, #Set baud rate, this will eventually need to be done dynamically
-            portstr = port_name,
+            portstr = "socket://localhost:35000",#port_name,
             protocol = "6",
             fast = False,
             timeout = 40,
