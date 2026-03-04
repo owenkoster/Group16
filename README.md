@@ -48,8 +48,9 @@ On a Windows machine, the emulator requires com0com to simulate a COM port. Skip
 Download: https://sourceforge.net/projects/com0com/ 
 Follow the installation instructions for com0com
 Next, open Device Manager, click on: com0com - serial port emulators
-Right-click on one of the COM ports in the drop-down and click Update Driver
+Right-click on one of the COM ports inside the drop down in the drop-down and click Update Driver
 next click search automatically, then click search on Windows Update
+YOU MUST GO TO ADVANCED SETTINGS INSIDE WINDOWS UPDATE TO GET THE DRIVER TO WORK 
 Inside the Windows Update menu in settings, click Advanced options, then press Optional updates, and install the update for com0com
 Restart the computer
 next in the Windows search bar, type setup and run the setup program. This will require .net
@@ -57,7 +58,7 @@ Set up a Virtual port pair, the only options that should be ticked are emulate b
 One port must be named COM3, and the other can be named COM#, where # is any number from 1-9, not including 3
 Click apply
 ##### Step 5:
-Finally download the latest release of the emulator from: https://github.com/Ircama/ELM327-emulator 
+Finally, download the latest release of the emulator from: https://github.com/Ircama/ELM327-emulator. 
 Unzip the folder and double-click the .exe
 Once the emulator terminal is open, type in scenario to switch the mode to car
 ##### Step 6:
