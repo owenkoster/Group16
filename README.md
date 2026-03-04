@@ -56,6 +56,7 @@ Restart the computer
 next in the Windows search bar, type setup and run the setup program. This will require .net
 Set up a Virtual port pair, the only options that should be ticked are emulate baud rate and enable buffer overrun
 One port must be named COM3, and the other can be named COM#, where # is any number from 1-9, not including 3
+See image uploaded
 Click apply
 ##### Step 5:
 Finally, download the latest release of the emulator from: https://github.com/Ircama/ELM327-emulator. 
