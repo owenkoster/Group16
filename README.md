@@ -50,7 +50,7 @@ Follow the installation instructions for com0com
 Next, open Device Manager, click on: com0com - serial port emulators
 Right-click on one of the COM ports inside the drop down in the drop-down and click Update Driver
 next click search automatically, then click search on Windows Update
-YOU MUST GO TO ADVANCED SETTINGS INSIDE WINDOWS UPDATE TO GET THE DRIVER TO WORK 
+YOU MUST GO TO ADVANCED SETTINGS INSIDE WINDOWS UPDATE TO GET THE DRIVER TO WORK. The update has CNCPorts in the title
 Inside the Windows Update menu in settings, click Advanced options, then press Optional updates, and install the update for com0com
 Restart the computer
 next in the Windows search bar, type setup and run the setup program. This will require .net
