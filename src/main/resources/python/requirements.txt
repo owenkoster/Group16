@@ -1,2 +1,4 @@
 obd
 pyzmq
+pyserial
+pytest
