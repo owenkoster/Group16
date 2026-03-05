@@ -28,6 +28,11 @@ def test_publish_vehicle_data():
             "value": 1500,
             "unit": "rpm",
             "lastUpdate": 123
+        },
+        "MAF": {
+            "value": "None",
+            "unit": "None",
+            "lastUpdate": 12345
         }
     }
 
