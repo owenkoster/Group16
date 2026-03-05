@@ -216,7 +216,7 @@ def get_port_strategy():
         is_windows = sys.platform.startswith('win')
         if is_windows:
             ports = obd.scan_serial()
-            if CURRENT_PORT >= len(ports):
+            if CURRENT_PORT > len(ports):
                 CURRENT_PORT = 0
             else:
                 CURRENT_PORT = CURRENT_PORT+1
