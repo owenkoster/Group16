@@ -1,14 +1,19 @@
-version: "3.9"
-
 services:
   elm327-emulator:
     build: .
     container_name: elm327-emulator
+
     ports:
-      - "35000:35000"       # TCP port for emulator
+      - "35000:35000"
+
     environment:
-      SCENARIO: elm/scenarios/car.yaml   # default scenario (can be overridden)
-      PORT: 35000                        # default TCP port
+      PORT: 35000
+      SCENARIO: car
+
     volumes:
-      - ./emulator/elm/scenarios:/app/elm/scenarios  # optional: allows editing scenarios without rebuild
+      - ./emulator/elm/scenarios:/app/elm/scenarios
+
+    stdin_open: true
+    tty: true
+
     restart: unless-stopped
