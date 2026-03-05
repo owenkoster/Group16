@@ -26,6 +26,8 @@ Download the most recent version of OBD2GO from the releases tab.
 Extract the ZIP file
 
 #### How to run the software:
+##### Step 0:
+Ensure docker desktop is running
 ##### Step 1:
 Open PowerShell or an equivalent command-line terminal
 ##### Step 2:
@@ -33,9 +35,9 @@ Navigate to where the project was extracted to, for example: "cd C:/MyFolder/"
 ##### Step 3:
 Navigate into the subfolder elm327-docker
 ##### Step 4: 
-Run the command docker compose run elm327-emulator
+Run the command: docker compose up --build
 ##### Step 5:
-Open PowerShell or an equivalent command-line terminal
+Open a new PowerShell or an equivalent command-line terminal
 ##### Step 6:
 Navigate to where the project was extracted to, for example: "cd C:/MyFolder/"
 ##### Step 7:
