@@ -5,7 +5,7 @@ WORKDIR /app
 # Copy emulator source
 COPY emulator/ /app/
 
-# Install system build tools (needed for python-daemon etc)
+# Install system build tools needed for python-daemon
 RUN apt-get update && apt-get install -y \
     gcc \
     python3-dev \
@@ -14,8 +14,12 @@ RUN apt-get update && apt-get install -y \
 # Install the emulator package
 RUN pip install --no-cache-dir .
 
-# Expose TCP port
-EXPOSE 35000
+# Default environment variables
+ENV PORT=35000
+ENV SCENARIO=car
 
-# Run emulator as module
-CMD ["python", "-m", "elm", "-n", "35000", "-s", "car"]
+# Expose TCP port
+EXPOSE $PORT
+
+# Run emulator with configurable scenario and port
+CMD ["sh", "-c", "python -m elm -n $PORT -s $SCENARIO"]
