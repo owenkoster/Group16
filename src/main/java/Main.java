@@ -73,8 +73,6 @@ public class Main {
             return;
         }
 
-
-
         //init units
         unitMap = new HashMap<>();
         unitMap.put("volt","V");
@@ -264,7 +262,7 @@ public class Main {
                     value = entry.getValue().getAsJsonObject().get("value").getAsString();
                 }
                 if (!entry.getValue().getAsJsonObject().get("value").getAsString().equals("None")) {
-                    JLabel label = new JLabel(entry.getKey()+": "+value
+                    JLabel label = new JLabel(Util.properCase(entry.getKey())+": "+value
                             +unitOf(entry.getValue().getAsJsonObject().get("unit").getAsString()));
                     label.setFont(Util.SMALL_FONT);
                     allDataVector.add(label);
