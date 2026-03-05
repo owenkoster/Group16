@@ -1,4 +1,3 @@
-*.csv
 target/
 logs/
 venv/
