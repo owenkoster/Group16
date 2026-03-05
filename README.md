@@ -37,7 +37,7 @@ Navigate into the subfolder elm327-docker
 ##### Step 4: 
 Run the command: docker compose up --build
 ##### Step 5:
-Open PowerShell or an equivalent command-line terminal
+Open a new PowerShell or an equivalent command-line terminal
 ##### Step 6:
 Navigate to where the project was extracted to, for example: "cd C:/MyFolder/"
 ##### Step 7:
