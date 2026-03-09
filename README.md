@@ -11,9 +11,9 @@ A notorious source of headache for drivers has always been the dreaded check eng
 
 
 ### 3. Use cases functional
-Currently, the user can view all available sensor data in standard mode. The user can also read any trouble codes found while in driving mode and can view a graph of the current vehicle speed. The log system works and will output CSV files with logged vehicle data into the logs folder in the same directory as the .jar file. The user can freely switch between driving mode and standard mode. 
+Currently, the user can view all available sensor data in standard mode. The user can also read any trouble codes found while in driving mode and can view a graph of the current vehicle speed. The log system works and will output CSV files with logged vehicle data into the logs folder in the same directory as the .jar file. The user can import logs of previous drives to be replayed. The user can freely switch between driving mode and standard mode. 
 
-### 4. How install and run the software
+### 4. How to install and run the software
 
 #### How to install the software:
 ##### Step 1:
@@ -27,7 +27,7 @@ Extract the ZIP file
 
 #### How to run the software:
 ##### Step 0:
-Ensure docker desktop is running
+Ensure Docker Desktop is running
 ##### Step 1:
 Open PowerShell or an equivalent command-line terminal
 ##### Step 2:
