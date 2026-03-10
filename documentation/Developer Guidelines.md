@@ -18,7 +18,7 @@
  - To build and run the software locally using Maven, run the commands below in the terminal
 #####
  - mvn clean package
- - java -jar target/VehicleApp.jar.jar
+ - java -jar target/VehicleApp.jar
 
 #### How to test the software:
  - Unit tests are run automatically when code is pushed to GitHub. Tests can be run manually by going to the GitHub actions tab, clicking on one of the workflow runs, and pressing rerun all tests. 
@@ -28,4 +28,4 @@
  - Add new Python tests to the /tests/ folder. Make sure the names of the new tests start with test_. This is important because we use pytest, and for the tests to run automatically, they must start with test_
 
 #### How to build a release of the software:
- - Releases are made by putting the Docker container from the source code into a folder named "OBD2GO". Then, take the most recent GitHub Actions build and put it in the main folder. Compress the main folder into a zip file. Next, create a new release. 
+ - Releases are made by putting the Docker container from the source code into a folder named "OBD2GO". Then, take the most recent GitHub Actions build and put it in the main folder. Compress the main folder into a zip file. Next, create a new release.
