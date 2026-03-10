@@ -26,6 +26,8 @@ Download the most recent version of OBD2GO from the releases tab.
 Extract the ZIP file
 
 #### How to run the software:
+##### Note
+If you are connecting to a vehicle through the OBD2 port, skip to step 5
 ##### Step 0:
 Ensure Docker Desktop is running
 ##### Step 1:
