@@ -12,6 +12,8 @@
 - The OBDCommModule.py file is the main python file that communicates with the vehicle’s OBD.
 - The Project Living Document.pdf is our project’s living document.
 - The README.md file contains a short description of our project.
+- The elm-327 docker directory contains the files that make the docker for our project work properly.
+- The tests directory contain our written tests.
 
 #### How to build the software:
  - The code is automatically built and tested when it is pushed to GitHub
