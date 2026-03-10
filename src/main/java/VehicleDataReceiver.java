@@ -69,14 +69,15 @@ public class VehicleDataReceiver {
                     JsonObject vehicleData = gson.fromJson(jsonData, JsonObject.class);
 
                     // Extract timestamp
-                    // THIS LINE HERE IS TEMPORARY AND SHOULD BE FIXED WHEN
                     if (initialTime == -1) initialTime = vehicleData.get("timestamp").getAsDouble();
                     timestamp = vehicleData.get("timestamp").getAsDouble() - initialTime;
 
                     // Extract data object
                     JsonObject incomingData = vehicleData.getAsJsonObject("data");
                     for (Map.Entry<String, JsonElement> entry : incomingData.entrySet()) {
-                        data.add(entry.getKey(), entry.getValue());
+                        if (!entry.getValue().getAsJsonObject().get("value").getAsString().equals("None")) {
+                            data.add(entry.getKey(), entry.getValue());
+                        }
                     }
 
                     // Display data

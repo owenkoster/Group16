@@ -1,12 +1,9 @@
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 
 public class Util {
 
     public static Font SMALL_FONT = new Font("Arial",Font.PLAIN,24);
-    public static Font BIG_FONT = new Font("Arial",Font.PLAIN,32);
 
     public static JPanel wrap(Component comp) {
         JPanel wrap = new JPanel();
@@ -29,11 +26,11 @@ public class Util {
                 s = s.substring(0,i) + (char)(s.charAt(i)-32) + s.substring(i+1);
             }
         }
-        if (s.contains("Maf")) s = s.substring(0,s.indexOf("Maf")) + "MAF" + s.substring(s.indexOf("Maf")+3);
-        if (s.contains("Dtc")) s = s.substring(0,s.indexOf("Dtc")) + "DTC" + s.substring(s.indexOf("Dtc")+3);
-        if (s.contains("B1s")) s = s.substring(0,s.indexOf("B1s")) + "B1S" + s.substring(s.indexOf("B1s")+3);
-        if (s.contains("Rpm")) s = s.substring(0,s.indexOf("Rpm")) + "RPM" + s.substring(s.indexOf("Rpm")+3);
-        if (s.contains("Elm")) s = s.substring(0,s.indexOf("Elm")) + "ELM" + s.substring(s.indexOf("Elm")+3);
+        s = s.replace("Maf","MAF");
+        s = s.replace("Dtc","DTC");
+        s = s.replace("B1s","B1S");
+        s = s.replace("Rpm","RPM");
+        s = s.replace("Elm","ELM");
         return s;
     }
 

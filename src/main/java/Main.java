@@ -42,8 +42,6 @@ public class Main {
     static JList<JLabel> DTCList = new JList<>();
     static XYSeriesCollection dataset;
     static XYPlot plot;
-    static XYSeriesCollection seriesCollection;
-    static double[][] currentData = new double[2][10];
     public static Map<String,String> unitMap;
 
     // This would normally be like 1, but for testing--higher values make more sense
@@ -106,7 +104,7 @@ public class Main {
         UIManager.put("OptionPane.font",new FontUIResource(Util.SMALL_FONT));
         UIManager.put("OptionPane.messageFont",new FontUIResource(Util.SMALL_FONT));
         UIManager.put("Button.font",new FontUIResource(Util.SMALL_FONT));
-        window.setTitle("OBD-2GO!");
+        window.setTitle("OBD-2GO");
         window.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         window.setSize(800,500);
         window.setLocationRelativeTo(null);
@@ -254,7 +252,6 @@ public class Main {
             dataset.addSeries(newSeries);
             allDataVector = new Vector<>();
             for (Map.Entry<String, JsonElement> entry : VehicleDataReceiver.data.entrySet()) {
-                //System.out.println(entry.getValue().getAsJsonObject());
                 String value = "";
                 try {
                     value = ""+Math.round(entry.getValue().getAsJsonObject().get("value").getAsDouble());
@@ -263,18 +260,35 @@ public class Main {
                 }
                 if (!entry.getValue().getAsJsonObject().get("value").getAsString().equals("None")) {
                     JLabel label = new JLabel(Util.properCase(entry.getKey())+": "+value
-                            +unitOf(entry.getValue().getAsJsonObject().get("unit").getAsString()));
+                            +unitOf(entry.getValue().getAsJsonObject().get("unit").getAsString()) + " "
+                            + lastUpdated(entry.getValue().getAsJsonObject().get("lastUpdate").getAsDouble())
+                            );
                     label.setFont(Util.SMALL_FONT);
                     allDataVector.add(label);
                 }
             }
             allDataList.setListData(allDataVector);
         });
-        DTCLabel.setText("No DTCs");
-        if (VehicleDataReceiver.data.has("GET_DTC")) {
-            if (!VehicleDataReceiver.data.get("GET_DTC").getAsJsonObject().get("value").getAsString().equals("None")) {
-                DTCLabel.setText(VehicleDataReceiver.data.get("GET_DTC").getAsJsonObject().get("value").getAsString());
-            }
+
+        if (VehicleDataReceiver.data.has("GET_DTC")
+                && !VehicleDataReceiver.data.get("GET_DTC").getAsJsonObject().get("value").getAsString().equals("None")) {
+                String strDTCs = VehicleDataReceiver.data.get("GET_DTC").getAsJsonObject().get("value").getAsString();
+                DTCLabel.setText("");
+
+                Vector<JLabel> vec = new Vector();
+                String nextStr = strDTCs;
+                while (nextStr.contains("('")) {
+                    String code = nextStr.substring(nextStr.indexOf("('")+2,nextStr.indexOf("',"));
+                    String description = nextStr.substring(nextStr.indexOf("',")+2,nextStr.indexOf("')"));
+                    description = description.length() > 1 ? description.substring(1) : "";
+                    nextStr = nextStr.substring(nextStr.indexOf("')")+2);
+                    JLabel label = new JLabel(code+": "+description);
+                    label.setFont(Util.SMALL_FONT);
+                    vec.add(label);
+                }
+                DTCList.setListData(vec);
+        } else {
+            DTCLabel.setText("No DTCs");
         }
 
         if (VehicleDataReceiver.speed > DRIVING_MODE_SPEED_THRESHOLD) {
@@ -282,7 +296,16 @@ public class Main {
         }
     }
 
+    public static String lastUpdated(double num) {
+        int sec = (int)( VehicleDataReceiver.timestamp - (num - VehicleDataReceiver.initialTime));
+        if (sec < 5) return "";
+        int minutes = (int)(sec / 60);
+        if (minutes > 1) return "("+minutes+" min ago)";
+        return "("+sec+" sec ago)";
+    }
+
     public static void initDrivingMode() {
+
         DrivingMode = new JPanel(new BorderLayout(10,10));
         // Dataset
         dataset = new XYSeriesCollection();
@@ -316,8 +339,12 @@ public class Main {
         JPanel DrivingModeRightPanel = new JPanel();
         DTCLabel = new JLabel("No Trouble Codes");
         DTCLabel.setFont(Util.SMALL_FONT);
-        DTCPanel = new JPanel();
-        DTCPanel.add(DTCLabel);
+        DTCPanel = new JPanel(new BorderLayout(10,10));
+        DTCPanel.add(DTCLabel,BorderLayout.NORTH);
+        DTCList.setCellRenderer(new MyCellRenderer());
+        JScrollPane scrollPane = new JScrollPane(DTCList);
+        scrollPane.setPreferredSize(new Dimension(250,250));
+        DTCPanel.add(scrollPane,BorderLayout.CENTER);
         DrivingModeRightPanel.add(DTCPanel,BorderLayout.NORTH);
         DrivingMode.add(DrivingModeRightPanel,BorderLayout.EAST);
     }
@@ -328,7 +355,7 @@ public class Main {
         allDataList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         allDataList.setCellRenderer(new MyCellRenderer());
         JScrollPane scrollPane = new JScrollPane(allDataList);
-        scrollPane.setPreferredSize(new Dimension(500,380));
+        scrollPane.setPreferredSize(new Dimension(550,380));
         StandardMode.add(scrollPane);
     }
 
