@@ -61,7 +61,6 @@ def OBDWorker(queue, port_name):
         connection = obd.Async(
             baudrate = 38400, #Set baud rate, this will eventually need to be done dynamically
             portstr = port_name,
-            protocol = "6",
             fast = False,
             timeout = 40,
         )
@@ -189,7 +188,6 @@ def wait_for_tcp_socket(host="localhost", port=35000, retries=10, delay=1):
 
 def get_port_strategy():
 
-
     global CURRENT_PORT
     global PROGRAM_ALIVE
     #manually specify the connection port
@@ -216,10 +214,11 @@ def get_port_strategy():
         is_windows = sys.platform.startswith('win')
         if is_windows:
             ports = obd.scan_serial()
-            if CURRENT_PORT > len(ports):
-                CURRENT_PORT = 0
-            else:
+            if CURRENT_PORT < len(ports)-1:
+                
                 CURRENT_PORT = CURRENT_PORT+1
+            else:
+                CURRENT_PORT = 0
             if ports:
                 print(f"[Auto] Found Windows adapter: {ports[CURRENT_PORT]}")
                 return ports[CURRENT_PORT]
